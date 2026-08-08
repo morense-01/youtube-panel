@@ -303,6 +303,7 @@ function recordSnapshot() {
   if (existing) Object.assign(existing.points, points);
   else hist.push({ date: today, points });
   hist.sort((a, b) => a.date.localeCompare(b.date));
+  backfillHistory(hist);
   store.set(KEYS.history, hist.slice(-180));
 }
 
@@ -316,9 +317,37 @@ function recordManualPoint() {
   const hist = store.get(KEYS.history, []);
   hist.push({ date: new Date().toISOString(), points, manual: true });
   hist.sort((a, b) => a.date.localeCompare(b.date));
+  backfillHistory(hist);
   store.set(KEYS.history, hist.slice(-180));
   renderHistory();
   showToast('Punto guardado. Revisa el gráfico ahora.', 'success');
+}
+
+/* Propaga el primer valor de cada canal hacia atrás en el tiempo para
+   que todas las curvas sean visibles desde el inicio. */
+function backfillHistory(hist) {
+  if (!hist.length || !channels.length) return;
+  const first = {};
+  for (const c of channels) first[c.id] = null;
+
+  // Primer valor real de cada canal (el más antiguo que exista)
+  for (const h of hist) {
+    for (const cid of Object.keys(first)) {
+      const p = h.points[cid];
+      if (p && typeof p.s === 'number' && first[cid] === null) {
+        first[cid] = { s: p.s, v: p.v, vd: p.vd };
+      }
+    }
+  }
+  // Rellena los vacíos de cada punto con ese primer valor
+  for (const h of hist) {
+    for (const cid of Object.keys(first)) {
+      const p = h.points[cid];
+      if (!p || typeof p.s !== 'number') {
+        if (first[cid]) h.points[cid] = { ...first[cid] };
+      }
+    }
+  }
 }
 
 /* ============================================================
