@@ -268,21 +268,41 @@ function categoryName(id) {
 /* ============================================================
    Historial de evolución (snapshots por día)
    ============================================================ */
-function recordSnapshot() {
-  if (!channels.length || !state.data.size) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const hist = store.get(KEYS.history, []);
+function buildPoints() {
   const points = {};
   for (const c of channels) {
     const bag = state.data.get(c.id);
     if (!bag) continue;
     points[c.id] = { s: bag.data.subs, v: bag.data.views, vd: bag.data.videos };
   }
+  return points;
+}
+
+/* Auto: guarda un punto por día (se fusiona si ya existe hoy) */
+function recordSnapshot() {
+  if (!channels.length || !state.data.size) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const hist = store.get(KEYS.history, []);
+  const points = buildPoints();
   const existing = hist.find((h) => h.date === today);
   if (existing) Object.assign(existing.points, points);
   else hist.push({ date: today, points });
   hist.sort((a, b) => a.date.localeCompare(b.date));
   store.set(KEYS.history, hist.slice(-180));
+}
+
+/* Punto manual: guarda uno nuevo aunque ya exista uno hoy (ver evolución sin esperar) */
+function recordManualPoint() {
+  if (!channels.length || !state.data.size) {
+    showToast('Carga los datos del panel primero (pulsa ↻).', 'error');
+    return;
+  }
+  const hist = store.get(KEYS.history, []);
+  hist.push({ date: new Date().toISOString(), points: buildPoints(), manual: true });
+  hist.sort((a, b) => a.date.localeCompare(b.date));
+  store.set(KEYS.history, hist.slice(-180));
+  renderHistory();
+  showToast('Punto guardado. Revisa el gráfico ahora.', 'success');
 }
 
 /* ============================================================
@@ -535,10 +555,25 @@ function videoCardHTML(v) {
 /* --- Historial / evolución --- */
 function renderHistory() {
   const hist = store.get(KEYS.history, []);
-  const box = $('#history-empty');
-  box.classList.toggle('hidden', hist.length >= 2);
+  const empty = $('#history-empty');
+  const msg = $('#empty-msg');
+  const sub = $('#empty-sub');
+  const canChart = hist.length >= 2 && typeof Chart !== 'undefined';
 
-  if (hist.length < 2 || typeof Chart === 'undefined') return;
+  // Mensajes según cuántos puntos hay (nunca destruye el botón)
+  if (hist.length === 0) {
+    msg.textContent = 'Aún no hay puntos de evolución. Se registra uno diario cada vez que abres el panel.';
+    sub.textContent = '¿Quieres verlo ya? Descarga los datos (pulsa ↻ arriba) y guarda un punto con el botón.';
+  } else if (hist.length === 1) {
+    const last = hist[hist.length - 1];
+    const totS = channels.reduce((a, c) => a + (last.points[c.id]?.s ?? 0), 0);
+    msg.textContent = `Ya tienes 1 punto registrado${last.manual ? ' (punto manual)' : ` (${fmtDateLong(last.date.split('T')[0])})`}.`;
+    sub.textContent = `Los gráficos necesitan al menos 2 puntos. Vuelve otro día y aparece automáticamente, o guarda otro punto ahora. Suscriptores actuales en ${channels.length} canal${channels.length > 1 ? 'es' : ''}: ${fmtFull.format(totS)}`;
+  }
+  $('#btn-record-history').style.display = canChart ? 'none' : '';
+  empty.classList.toggle('hidden', canChart);
+
+  if (!canChart) return;
 
   const labels = hist.map((h) => fmtDateShort(h.date));
   const mkSet = (field) => {
@@ -599,6 +634,12 @@ function lineOptions() {
 }
 
 function fmtDateShort(date) {
+  // Los puntos manuales llevan fecha ISO completa (con hora)
+  if (date.includes('T')) {
+    const d = new Date(date);
+    return d.toLocaleDateString('es', { day: 'numeric', month: 'short' }) +
+      ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+  }
   const parts = date.split('-');
   return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}`;
 }
@@ -719,11 +760,7 @@ function bindEvents() {
     $('#lbl-maxvideos').textContent = `${maxVideos} videos`;
   });
 
-  $('#btn-record-history').addEventListener('click', () => {
-    recordSnapshot();
-    renderHistory();
-    showToast('Estado actual guardado en el historial', 'success');
-  });
+  $('#btn-record-history').addEventListener('click', recordManualPoint);
 
   $('#btn-reset').addEventListener('click', () => {
     if (!confirm('¿Borrar todos los datos guardados (API key, canales e historial)?')) return;
