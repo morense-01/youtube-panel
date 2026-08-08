@@ -296,6 +296,7 @@ a { color: var(--accent); }
   overflow: hidden;
 }
 .video-date { color: var(--text-muted); font-size: 12px; }
+.video-hour { color: var(--accent); font-size: 12px; font-weight: 600; }
 .video-shorts-badge {
   display: inline-block;
   background: var(--primary-2);

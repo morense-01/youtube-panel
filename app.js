@@ -51,6 +51,10 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
+
 function fmtDateLong(iso) {
   return new Date(iso).toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
 }
@@ -554,6 +558,7 @@ function renderRank() {
 
 /* --- Videos --- */
 function renderVideos() {
+  updateHourChart();
   const box = $('#videos-list');
   if (!state.data.size) { box.innerHTML = ''; return; }
   let total = 0;
@@ -587,6 +592,7 @@ function videoCardHTML(v) {
       <div class="video-body">
         <div class="video-title">${esc(v.title)}${short ? '<span class="video-shorts-badge">#Shorts</span>' : ''}</div>
         <div class="video-date">${fmtDateTime(v.published)} · ${timeAgo(v.published)}</div>
+        <div class="video-hour">🕐 Publicado a las ${esc(fmtTime(v.published))}</div>
         <div class="video-stats">
           <span class="video-stat">👁 <b>${fmtCount(v.views)}</b></span>
           <span class="video-stat">👍 <b>${fmtCount(v.likes)}</b></span>
@@ -596,6 +602,69 @@ function videoCardHTML(v) {
         ${v.desc ? `<div class="video-desc">${esc(v.desc)}</div>` : ''}
       </div>
     </a>`;
+}
+
+/* Histograma: cuántos videos publica cada canal a cada hora del día */
+function updateHourChart() {
+  const canvas = $('#chart-hour-dist');
+  if (typeof Chart === 'undefined' || !state.data.size) return;
+
+  const hourLabels = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+
+  // Por canal: contar en cuáles horas se publicó cada video
+  const datasets = [];
+  let ci = 0;
+  for (const [cid, bag] of state.data) {
+    const d = bag.data;
+    const videos = bag.videos || [];
+    if (!videos.length) continue;
+    const counts = new Array(24).fill(0);
+    for (const v of videos) {
+      const h = new Date(v.published).getHours();
+      counts[h]++;
+    }
+    const color = chartColors[ci++ % chartColors.length];
+    datasets.push({
+      label: d.name,
+      data: counts,
+      backgroundColor: color + 'b3',
+      borderColor: color,
+      borderWidth: 1,
+      borderRadius: 4,
+    });
+  }
+
+  if (!datasets.length) return;
+  destroyChart('hourDist');
+  state.charts.hourDist = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: hourLabels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#eef1f7', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: (c) => `${c.dataset.label}: ${c.raw} video${c.raw === 1 ? '' : 's'}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#98a1b5', font: { size: 9 }, maxTicksLimit: 12 },
+          grid: { display: false },
+          border: { color: '#262c3d' },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#98a1b5', precision: 0 },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          border: { color: '#262c3d' },
+        },
+      },
+    },
+  });
 }
 
 /* --- Historial / evolución --- */
