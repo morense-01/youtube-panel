@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1115" />
+  <meta name="description" content="Panel personal para monitorear todos tus canales de YouTube en un solo lugar." />
+  <title>Panel YouTube</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <button class="logo-btn" id="btn-home" aria-label="Inicio">
+        <span class="logo-icon">📺</span>
+        <span class="logo-text">Panel YouTube</span>
+      </button>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btn-refresh" title="Actualizar datos" aria-label="Actualizar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-settings" title="Configuración" aria-label="Configuración">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="app">
+    <!-- Estado: sin API key -->
+    <section id="screen-setup" class="screen hidden">
+      <div class="empty-state">
+        <div class="empty-icon">🔑</div>
+        <h2>Bienvenido a tu Panel YouTube</h2>
+        <p>Para empezar, necesitas tu clave de API de YouTube (gratis). Tu clave solo se guarda en este navegador.</p>
+        <button class="btn btn-primary" data-action="open-settings">Configurar mi clave</button>
+        <details class="help">
+          <summary>¿Cómo creo mi API key?</summary>
+          <ol>
+            <li>Entra a <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a>.</li>
+            <li>Crea un proyecto (o selecciona uno) y abre el menú "APIs y servicios".</li>
+            <li>Activa <strong>YouTube Data API v3</strong>.</li>
+            <li>Ve a "Credenciales" → "Crear credenciales" → "Clave de API".</li>
+            <li>Copia la clave y pégala aquí. Recomendado: restríngela a "Apps HTTP" con tu dominio de GitHub Pages.</li>
+          </ol>
+        </details>
+      </div>
+    </section>
+
+    <!-- Estado: sin canales -->
+    <section id="screen-nodata" class="screen hidden">
+      <div class="empty-state">
+        <div class="empty-icon">🎬</div>
+        <h2>Aún no tienes canales</h2>
+        <p>Agrega tus canales de YouTube para comenzar a monitorearlos.</p>
+        <button class="btn btn-primary" data-action="open-settings">Agregar canales</button>
+      </div>
+    </section>
+
+    <!-- Panel principal -->
+    <section id="screen-main" class="screen hidden">
+      <div class="content">
+        <div id="view-dashboard" class="view">
+          <div class="view-head">
+            <h1>Panel general</h1>
+            <span id="lbl-updated" class="muted"></span>
+          </div>
+          <div id="summary-cards" class="cards-grid"></div>
+          <div class="panel">
+            <div class="panel-title">
+              <h2>Comparación entre canales</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-comparison"></canvas>
+            </div>
+          </div>
+          <div class="rank-list" id="rank-list"></div>
+        </div>
+
+        <div id="view-videos" class="view hidden">
+          <div class="view-head">
+            <h1>Últimos videos</h1>
+            <span id="lbl-videos-info" class="muted"></span>
+          </div>
+          <div id="videos-list"></div>
+        </div>
+
+        <div id="view-history" class="view hidden">
+          <div class="view-head">
+            <h1>Evolución</h1>
+            <p class="muted">Los datos se guardan en este navegador cada vez que abres el panel. Vuelve periódicamente para ir registrando tu crecimiento.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              <h2>Suscriptores</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-subs"></canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              <h2>Vistas totales</h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-views"></canvas>
+            </div>
+          </div>
+          <div id="history-empty" class="empty-state hidden">
+            <div class="empty-icon">📈</div>
+            <p>Registra tu primer punto de la historia.</p>
+            <button class="btn btn-primary" id="btn-record-history">Guardar estado actual</button>
+          </div>
+        </div>
+
+        <div id="view-settings" class="view hidden">
+          <div class="view-head">
+            <h1>Configuración</h1>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title"><h2>Clave de API</h2></div>
+            <label class="field">
+              <span class="label">API key de YouTube Data v3</span>
+              <input type="password" id="input-apikey" placeholder="AIza..." autocomplete="off" />
+            </label>
+            <div class="row-between">
+              <button class="btn btn-primary" id="btn-save-key">Guardar clave</button>
+              <button class="btn btn-ghost" id="btn-test-key">Probar conexión</button>
+            </div>
+            <p class="muted small">Se guarda solo en tu navegador (localStorage). No se sube a GitHub.</p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title"><h2>Agregar canal</h2></div>
+            <label class="field">
+              <span class="label">URL, @handle o ID del canal</span>
+              <input type="text" id="input-channel" placeholder="https://www.youtube.com/@tucanal" />
+            </label>
+            <button class="btn btn-primary" id="btn-add-channel">Agregar canal</button>
+            <div id="add-channel-msg" class="msg"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title"><h2>Mis canales</h2></div>
+            <div id="channel-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title"><h2>Videos por canal</h2></div>
+            <label class="field">
+              <span class="label">Cantidad máxima de videos a cargar</span>
+              <input type="range" id="input-maxvideos" min="5" max="50" step="5" />
+              <span id="lbl-maxvideos" class="hint"></span>
+            </label>
+            <p class="muted small">A mayor cantidad, más llamadas a la API y más tiempo de carga.</p>
+          </div>
+
+          <div class="panel danger">
+            <div class="panel-title"><h2>Zona de peligro</h2></div>
+            <p class="muted small">Borra todos los datos guardados en este navegador.</p>
+            <button class="btn btn-danger" id="btn-reset">Borrar todos los datos</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="tab active" data-tab="dashboard">
+      <span class="tab-icon">📊</span>
+      <span>Panel</span>
+    </button>
+    <button class="tab" data-tab="videos">
+      <span class="tab-icon">🎬</span>
+      <span>Videos</span>
+    </button>
+    <button class="tab" data-tab="history">
+      <span class="tab-icon">📈</span>
+      <span>Historial</span>
+    </button>
+    <button class="tab" data-tab="settings">
+      <span class="tab-icon">⚙️</span>
+      <span>Ajustes</span>
+    </button>
+  </nav>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
