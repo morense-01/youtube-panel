@@ -778,6 +778,7 @@ function bindEvents() {
   });
 
   $('#btn-record-history').addEventListener('click', recordManualPoint);
+  $('#btn-snapshot-history').addEventListener('click', recordManualPoint);
 
   $('#btn-reset').addEventListener('click', () => {
     if (!confirm('¿Borrar todos los datos guardados (API key, canales e historial)?')) return;
@@ -844,7 +845,8 @@ async function addChannel() {
     msg.textContent = `Se agregó ${ch.name}.`;
     renderChannelList();
     refreshScreens();
-    loadStats();
+    await loadStats();
+    recordManualPoint();
   } catch (e) {
     msg.className = 'msg error';
     msg.textContent = e.message;
