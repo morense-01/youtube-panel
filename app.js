@@ -16,6 +16,7 @@ const KEYS = {
   channels: 'ytPanel.channels',
   maxVideos: 'ytPanel.maxVideos',
   history: 'ytPanel.history',
+  lastData: 'ytPanel.lastData',
 };
 
 /* ---------- Utilidades ---------- */
@@ -270,12 +271,26 @@ function categoryName(id) {
    ============================================================ */
 function buildPoints() {
   const points = {};
+  const fallback = store.get(KEYS.lastData, {});
   for (const c of channels) {
     const bag = state.data.get(c.id);
-    if (!bag) continue;
-    points[c.id] = { s: bag.data.subs, v: bag.data.views, vd: bag.data.videos };
+    if (bag) {
+      points[c.id] = { s: bag.data.subs, v: bag.data.views, vd: bag.data.videos };
+    } else if (fallback[c.id]) {
+      points[c.id] = fallback[c.id];
+    }
   }
   return points;
+}
+
+/* Persiste los últimos stats para poder registrar puntos aunque la API falle luego */
+function persistLastData() {
+  if (!state.data.size) return;
+  const last = {};
+  for (const [cid, bag] of state.data) {
+    last[cid] = { s: bag.data.subs, v: bag.data.views, vd: bag.data.videos };
+  }
+  store.set(KEYS.lastData, last);
 }
 
 /* Auto: guarda un punto por día (se fusiona si ya existe hoy) */
@@ -293,12 +308,13 @@ function recordSnapshot() {
 
 /* Punto manual: guarda uno nuevo aunque ya exista uno hoy (ver evolución sin esperar) */
 function recordManualPoint() {
-  if (!channels.length || !state.data.size) {
-    showToast('Carga los datos del panel primero (pulsa ↻).', 'error');
+  const points = buildPoints();
+  if (!Object.keys(points).length) {
+    showToast('Primero agrega canales y carga los datos (pulsa ↻).', 'error');
     return;
   }
   const hist = store.get(KEYS.history, []);
-  hist.push({ date: new Date().toISOString(), points: buildPoints(), manual: true });
+  hist.push({ date: new Date().toISOString(), points, manual: true });
   hist.sort((a, b) => a.date.localeCompare(b.date));
   store.set(KEYS.history, hist.slice(-180));
   renderHistory();
@@ -329,6 +345,7 @@ async function loadStats() {
       catch (e) { console.warn('videoList', id, e); bag.videos = []; }
     }));
 
+    persistLastData();
     recordSnapshot();
     renderAll();
     showToast('Datos actualizados', 'success');
