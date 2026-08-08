@@ -614,6 +614,15 @@ function refreshScreens() {
   $('#tabbar').classList.toggle('hidden', noKey || noChans);
 }
 
+/* Abre la pestaña de Ajustes aunque aún no haya key ni canales */
+function openSettings() {
+  $('#screen-setup').classList.add('hidden');
+  $('#screen-nodata').classList.add('hidden');
+  $('#screen-main').classList.remove('hidden');
+  $('#tabbar').classList.remove('hidden');
+  switchTab('settings');
+}
+
 /* ============================================================
    Toast
    ============================================================ */
@@ -637,7 +646,8 @@ function bindEvents() {
   $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
   $('#btn-home').addEventListener('click', () => switchTab('dashboard'));
   $('#btn-refresh').addEventListener('click', loadStats);
-  $$('[data-action]').forEach((b) => b.addEventListener('click', () => switchTab('settings')));
+  $$('[data-action]').forEach((b) => b.addEventListener('click', openSettings));
+  $('#btn-settings').addEventListener('click', openSettings);
 
   $('#btn-save-key').addEventListener('click', saveKey);
   $('#btn-test-key').addEventListener('click', testKey);
