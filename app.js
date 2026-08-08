@@ -50,6 +50,10 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function fmtDateLong(iso) {
+  return new Date(iso).toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 function timeAgo(iso) {
   const sec = Math.floor((Date.now() - new Date(iso)) / 1000);
   if (sec < 0) return 'ahora';
@@ -197,12 +201,15 @@ const YT = {
       name: item.snippet.title,
       handle: item.snippet.customUrl || '',
       thumb: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || '',
+      published: item.snippet.publishedAt || '',
+      country: item.snippet.country || '',
       subs: Number(item.statistics?.subscriberCount || 0),
       views: Number(item.statistics?.viewCount || 0),
       videos: Number(item.statistics?.videoCount || 0),
       hiddenSubs: item.statistics?.hiddenSubscriberCount === true,
       uploadsPlaylist: item.contentDetails?.relatedPlaylists?.uploads || '',
       desc: item.snippet.description || '',
+      url: `https://www.youtube.com/channel/${item.id}`,
     };
   },
 
@@ -317,6 +324,7 @@ async function loadStats() {
    Render de vistas
    ============================================================ */
 function renderAll() {
+  renderFilterOptions();
   renderSummary();
   renderComparison();
   renderRank();
@@ -326,31 +334,80 @@ function renderAll() {
     `Actualizado: ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+/* Puebla el desplegable de filtro por canal conservando la selección */
+function renderFilterOptions() {
+  const sel = $('#channel-filter');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Todos los canales</option>';
+  for (const [cid, bag] of state.data) {
+    const opt = document.createElement('option');
+    opt.value = cid;
+    opt.textContent = bag.data.name;
+    sel.appendChild(opt);
+  }
+  sel.value = state.data.has(prev) ? prev : 'all';
+}
+
 /* --- Tarjetas resumen --- */
 function renderSummary() {
   const grid = $('#summary-cards');
   if (!state.data.size) { grid.innerHTML = ''; return; }
   grid.innerHTML = '';
-  for (const { data: d } of state.data.values()) {
-    grid.insertAdjacentHTML('beforeend', `
-      <article class="card">
-        <div class="channel-top">
-          <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          <div>
-            <div class="channel-name">${esc(d.name)}</div>
-            <div class="channel-handle">${esc(d.handle || d.id)}</div>
-          </div>
-        </div>
-        <div class="stat-row">
-          <div class="stat"><div class="stat-label">Suscriptores</div>
-            <div class="stat-value success">${fmtFull.format(d.subs)}</div></div>
-          <div class="stat"><div class="stat-label">Vistas</div>
-            <div class="stat-value primary">${fmtFull.format(d.views)}</div></div>
-          <div class="stat"><div class="stat-label">Videos</div>
-            <div class="stat-value accent">${fmtFull.format(d.videos)}</div></div>
-        </div>
-      </article>`);
+
+  const sel = $('#channel-filter');
+  const filter = sel.value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+
+  for (const bag of bagList) {
+    const d = bag.data;
+    grid.insertAdjacentHTML('beforeend', channelCardHTML(d, bag.videos));
   }
+}
+
+/* Tarjeta enriquecida de un canal */
+function channelCardHTML(d, videos) {
+  const avgViewsPerVideo = d.videos > 0 ? Math.round(d.views / d.videos) : 0;
+  const subsPct = d.views > 0 ? ((d.subs / d.views) * 100).toFixed(2) : '0';
+  let avgLikes = null;
+  if (videos && videos.length) {
+    const sum = videos.reduce((a, v) => a + v.likes, 0);
+    avgLikes = Math.round(sum / videos.length);
+  }
+  const meta = [
+    d.published ? `📅 Desde ${fmtDateLong(d.published)}` : '',
+    d.country ? `🌍 ${esc(d.country)}` : '',
+  ].filter(Boolean).join(' · ');
+
+  return `
+    <article class="card">
+      <div class="channel-top">
+        <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+        <div>
+          <div class="channel-name">${esc(d.name)}${d.url ? ` <a class="card-link" href="${escAttr(d.url)}" target="_blank" rel="noopener" title="Abrir canal en YouTube">↗</a>` : ''}</div>
+          <div class="channel-handle">${esc(d.handle || d.id)}</div>
+        </div>
+      </div>
+      ${meta ? `<div class="channel-meta">${meta}</div>` : ''}
+      <div class="stat-row">
+        <div class="stat"><div class="stat-label">Suscriptores</div>
+          <div class="stat-value success">${fmtFull.format(d.subs)}</div></div>
+        <div class="stat"><div class="stat-label">Vistas</div>
+          <div class="stat-value primary">${fmtFull.format(d.views)}</div></div>
+        <div class="stat"><div class="stat-label">Videos</div>
+          <div class="stat-value accent">${fmtFull.format(d.videos)}</div></div>
+      </div>
+      <div class="stat-row row2">
+        <div class="stat"><div class="stat-label">Vistas / video</div>
+          <div class="stat-value">${fmtFull.format(avgViewsPerVideo)}</div></div>
+        <div class="stat"><div class="stat-label">Subs / vistas</div>
+          <div class="stat-value">${subsPct}%</div></div>
+        <div class="stat"><div class="stat-label">Likes prom. (${(videos||[]).length})</div>
+          <div class="stat-value">${avgLikes === null ? '—' : fmtCount(avgLikes)}</div></div>
+      </div>
+      ${d.desc ? `<p class="card-desc">${esc(d.desc)}</p>` : ''}
+    </article>`;
 }
 
 /* --- Comparación con Chart.js --- */
@@ -648,6 +705,8 @@ function bindEvents() {
   $('#btn-refresh').addEventListener('click', loadStats);
   $$('[data-action]').forEach((b) => b.addEventListener('click', openSettings));
   $('#btn-settings').addEventListener('click', openSettings);
+
+  $('#channel-filter').addEventListener('change', renderSummary);
 
   $('#btn-save-key').addEventListener('click', saveKey);
   $('#btn-test-key').addEventListener('click', testKey);
