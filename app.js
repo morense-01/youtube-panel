@@ -895,6 +895,177 @@ function updateAlertCfg() {
 }
 
 /* ============================================================
+   💡 Ideas: genera títulos y ángulos derivados de los videos
+   con mejor Viral Score (tema, formato, duración, interacción).
+   ============================================================ */
+function truncTitle(t, n = 34) {
+  t = String(t || '').trim();
+  return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+}
+
+function ideaTheme(set) {
+  if (set.kws.length) return set.kws[0];
+  if (set.cat && set.cat !== '42') return categoryName(set.cat);
+  return 'tu contenido';
+}
+
+function buildIdeaSet() {
+  const filter = $('#channel-filter').value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+  const all = [];
+  for (const bag of bagList) {
+    for (const v of (bag.videos || [])) all.push({ v, bag });
+  }
+  if (all.length < 3) return null;
+
+  const scored = all
+    .map((x) => ({ ...x, score: computeViralScore(x.v, x.bag).total }))
+    .sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 10);
+  const kws = patternKeywords(top.map((x) => x.v.title));
+  const mainKw = kws[0] ? kws[0].toLowerCase() : '';
+  const kwCount = mainKw
+    ? top.filter((x) => String(x.v.title).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(mainKw)).length
+    : top.length;
+  const cat = mostCommonCat(top.map((x) => x.v.categoryId));
+  const shorts = top.filter((x) => String(x.v.categoryId) === '42').length;
+  const topN = top.length;
+  const durs = top.map((x) => durSeconds(x.v.duration)).filter(Boolean).sort((a, b) => a - b);
+  const durLo = durs.length ? quantile(durs, 0.25) : 0;
+  const durHi = durs.length ? quantile(durs, 0.75) : 0;
+  const engs = top
+    .map((x) => (x.v.views ? (x.v.likes + x.v.comments) / x.v.views : 0))
+    .filter((e) => e > 0);
+  const medEng = engs.length ? quantile(engs, 0.5) : 0;
+  return {
+    top, kws, kwCount, cat, shorts, topN,
+    isShort: shorts >= topN / 2,
+    formatLabel: shorts >= topN / 2 ? 'Shorts' : 'videos largos',
+    durLo, durHi, medEng, best: top[0],
+  };
+}
+
+function ideaCards(set) {
+  const theme = ideaTheme(set);
+  const bestTitle = set.best && set.best.v.title ? truncTitle(set.best.v.title) : '';
+  const durLabel = fmtDurRange(set.durLo, set.durHi);
+  return [
+    {
+      tag: '🎯 Remix',
+      title: bestTitle ? `Remix de tu video «${bestTitle}» con nuevo gancho al inicio` : `Remix de tu mejor video con un nuevo gancho al inicio`,
+      why: `Tus #1 por Viral Score. Mismo tema, otro ángulo.`,
+    },
+    {
+      tag: '🔁 Secuela',
+      title: `Parte 2: ${theme} (lo que faltó decir)`,
+      why: `Continúa la conversación que tus ${set.kwCount} videos exitosos ya empezaron.`,
+    },
+    {
+      tag: '🪝 Gancho',
+      title: `¿Sabías esto sobre ${theme}?`,
+      why: `Abre con el dato que ya te funciona: ${set.kwCount} de tus ${set.topN} mejores videos giran en torno a «${theme}».`,
+    },
+    {
+      tag: '❌ Error',
+      title: `El error #1 con ${theme} (y cómo evitarlo)`,
+      why: `El formato «error» funciona bien en ${set.formatLabel}; tu cara al tema ya es «${theme}».`,
+    },
+    {
+      tag: '📋 Lista',
+      title: `3 señales de que ${theme} te está funcionando`,
+      why: `Lista corta y directa, ideal para ${set.formatLabel}.`,
+    },
+    {
+      tag: '❓ Pregunta',
+      title: `¿${theme} es para todos? Tu experiencia honesta`,
+      why: `Preguntas abiertas disparan comentarios (tu interacción media: ${set.medEng ? pct(set.medEng) : 'aún sin datos'}).`,
+    },
+    {
+      tag: '⚖️ Antes vs después',
+      title: `${theme}: antes vs después`,
+      why: `Contraste que retiene; combina con tu duración típica de ${durLabel}.`,
+    },
+    {
+      tag: '🔥 Mito',
+      title: `5 mitos sobre ${theme} que debes dejar de creer`,
+      why: `Nuevo ángulo del mismo tema ganador: ${set.kwCount} de tus mejores videos ya suman sobre «${theme}».`,
+    },
+    {
+      tag: '🎬 Detrás de cámaras',
+      title: `Así grabé mi mejor video sobre ${theme} que despegó`,
+      why: `Humaniza el canal y refuerza el tema que más te funciona.`,
+    },
+    {
+      tag: '🧵 Historia',
+      title: `Lo que aprendí tras publicar sobre ${theme}`,
+      why: `Cierra el ciclo de tu tema ganador en formato historia.`,
+    },
+  ];
+}
+
+function ideasHTML(set) {
+  const theme = ideaTheme(set);
+  const durLabel = fmtDurRange(set.durLo, set.durHi);
+  return `
+    <div class="idea-summary">
+      <div class="idea-summary-title">🧠 Tus ${set.kwCount} videos exitosos giran en torno a <b>«${esc(theme)}»</b></div>
+      <div class="idea-chips">
+        <span class="idea-chip">${set.isShort ? '🎬 Shorts' : '🎥 Videos largos'}</span>
+        <span class="idea-chip">⏱️ ${durLabel}</span>
+        ${set.medEng ? `<span class="idea-chip">💬 ${pct(set.medEng)} interacción</span>` : ''}
+      </div>
+      <p class="muted small">Estas 10 ideas reutilizan tu tema ganador, formato y duración reales. Cópialo y ajústalo a tu estilo.</p>
+    </div>
+    <div class="idea-grid">
+      ${ideaCards(set).map((c) => `
+        <div class="idea-card">
+          <div class="idea-tag">${c.tag}</div>
+          <div class="idea-title">${esc(c.title)}</div>
+          <div class="idea-why">${esc(c.why)}</div>
+          <button class="btn btn-ghost btn-copy" data-copy="${escAttr(c.title)}">📋 Copiar</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderIdeas() {
+  const box = $('#ideas-result');
+  const msg = $('#ideas-msg');
+  box.innerHTML = '';
+  msg.textContent = '';
+  const set = buildIdeaSet();
+  if (!set) {
+    msg.className = 'msg error';
+    msg.textContent = 'Necesitas al menos 3 videos con datos cargados para generar ideas. Pulsa ↻ y vuelve a intentarlo.';
+    return;
+  }
+  box.innerHTML = ideasHTML(set);
+}
+
+function copyIdea(text, btn) {
+  const done = () => {
+    btn.textContent = '✅ Copiado';
+    setTimeout(() => { btn.textContent = '📋 Copiar'; }, 1600);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => showToast('No se pudo copiar.', 'error'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch { showToast('No se pudo copiar.', 'error'); }
+    ta.remove();
+  }
+}
+
+/* ============================================================
+   "Lo que está funcionando": compara videos recientes contra
+   el promedio del canal y muestra la mejor señal de cada tipo
+   ============================================================ */
+
+/* ============================================================
    "Lo que está funcionando": compara videos recientes contra
    el promedio del canal y muestra la mejor señal de cada tipo
    ============================================================ */
@@ -1576,6 +1747,11 @@ function bindEvents() {
   $('#btn-settings').addEventListener('click', openSettings);
 
   $('#btn-alerts').addEventListener('click', openAlerts);
+  $('#btn-ideas').addEventListener('click', renderIdeas);
+  $('#ideas-result').addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-copy');
+    if (btn) copyIdea(btn.dataset.copy, btn);
+  });
   $('#btn-clear-alerts').addEventListener('click', clearAlerts);
   $('#alerts-close').addEventListener('click', closeAlerts);
   $('#alerts-backdrop').addEventListener('click', closeAlerts);

@@ -636,6 +636,59 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .field-pair input[type="number"] { width: 100%; }
 
+/* ============ Ideas ============ */
+.ideas-panel { gap: 10px; }
+#ideas-result { display: flex; flex-direction: column; gap: 14px; }
+.idea-summary {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 14px;
+  box-shadow: var(--shadow-sm);
+}
+.idea-summary-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.idea-summary-title b {
+  background: linear-gradient(100deg, var(--primary-2), var(--primary) 55%, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.idea-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.idea-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.idea-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.idea-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px;
+  box-shadow: var(--shadow-sm);
+}
+.idea-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.idea-title { font-weight: 700; font-size: 13.5px; line-height: 1.4; }
+.idea-why { font-size: 11.5px; color: var(--text-muted); }
+.btn-copy { align-self: flex-start; margin-top: 2px; }
+
 /* ============ Videos ============ */
 .channel-block { margin-bottom: 22px; }
 .channel-block-head {
@@ -1223,6 +1276,7 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   .cards-grid { grid-template-columns: repeat(2, 1fr); }
   .ww-grid { grid-template-columns: repeat(2, 1fr); }
   .pat-grid { grid-template-columns: repeat(2, 1fr); }
+  .idea-grid { grid-template-columns: repeat(2, 1fr); }
   .modal { align-items: center; }
   .modal-card { border-radius: 20px; max-width: 480px; }
   .tabbar {
@@ -1239,4 +1293,5 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   .cards-grid { grid-template-columns: repeat(3, 1fr); }
   .ww-grid { grid-template-columns: repeat(3, 1fr); }
   .pat-grid { grid-template-columns: repeat(3, 1fr); }
+  .idea-grid { grid-template-columns: repeat(3, 1fr); }
 }
