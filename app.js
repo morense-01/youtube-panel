@@ -500,6 +500,7 @@ function renderAll() {
   renderWhatsWorking();
   renderComparison();
   renderChannelRanks();
+  renderPersonalAlerts();
   renderRank();
   renderVideos();
   renderRanking();
@@ -980,6 +981,107 @@ function updateAlertCfg() {
   store.set(KEYS.alertCfg, alertCfg);
   renderAlertBadge();
   detectAlerts();
+}
+
+/* ============================================================
+   🧠 Alertas personales: hallazgos automáticos del panel según
+   tu propio rendimiento (sin umbrales ni configuración).
+   ============================================================ */
+function personalAlerts() {
+  const out = [];
+  const now = Date.now();
+  const hist = store.get(KEYS.history, []);
+
+  const add = ({ icon, cls, text, video = null }) => {
+    out.push({ icon, cls, text, video });
+  };
+
+  // Crecimiento semanal real (historial vs hace ~7 días)
+  const best = {}; // cid -> { v, age }
+  for (const h of hist) {
+    const t = new Date(h.date).getTime();
+    if (!Number.isFinite(t)) continue;
+    for (const [cid, pts] of Object.entries(h.points || {})) {
+      if (typeof pts?.v !== 'number') continue;
+      const age = now - t;
+      best[cid] = best[cid] || { v: pts.v, age };
+      // nos quedamos con el punto más cercano a hace 7 días (ni más viejo ni más nuevo)
+      if (age >= 7 * 86400000 && (age < best[cid].age || best[cid].age < 7 * 86400000)) {
+        best[cid] = { v: pts.v, age };
+      }
+    }
+  }
+
+  for (const [, bag] of state.data) {
+    const d = bag.data;
+    const videos = bag.videos || [];
+    if (!videos.length) continue;
+
+    // Récord / bajo promedio: compara cada video reciente contra el promedio del canal
+    const avgViews = d.videos > 0 ? d.views / d.videos : 0;
+    const recent = videos.filter((v) => now - new Date(v.published).getTime() < 14 * 86400000);
+    let bestOver = null, bestUnder = null;
+    for (const v of recent) {
+      const ratio = avgViews > 0 ? (Number(v.views) || 0) / avgViews : 0;
+      if (ratio < 0.7 && (!bestUnder || ratio < bestUnder.ratio)) (bestUnder = { v, ratio });
+      if (ratio > 1.2 && (!bestOver || ratio > bestOver.ratio)) (bestOver = { v, ratio });
+    }
+    if (bestOver && bestOver.ratio >= 1.5 && bestOver.ratio < 2) {
+      add({ icon: '🟢', cls: 'up', video: bestOver.v.id,
+        text: `${d.name}: «${truncTitle(bestOver.v.title, 40)}» está ${bestOver.ratio.toFixed(1)}X sobre tu promedio.` });
+    }
+    if (bestUnder && bestUnder.ratio <= 0.6) {
+      add({ icon: '🔴', cls: 'down', video: bestUnder.v.id,
+        text: `${d.name}: «${truncTitle(bestUnder.v.title, 40)}» está ${((1 - bestUnder.ratio) * 100).toFixed(0)}% debajo del promedio.` });
+    }
+
+    // Récord de vistas dentro del canal
+    if (bestOver && bestOver.ratio >= 2) {
+      add({ icon: '🔥', cls: 'hot', text: `${d.name}: nuevo récord de views para «${truncTitle(bestOver.v.title, 40)}» (${fmtCount(bestOver.v.views)} views).` });
+    }
+
+    // Canal sin publicar
+    const sorted = videos
+      .map((v) => new Date(v.published).getTime())
+      .sort((a, b) => b - a);
+    const last = sorted[0] || now;
+    const daysGap = Math.floor((now - last) / 86400000);
+    if (daysGap >= 5) {
+      add({ icon: '⚠️', cls: 'idle',
+        text: `${d.name} lleva ${daysGap} días sin publicar (último video hace ${daysGap} días).` });
+    }
+
+    // Crecimiento semanal
+    const ref = best[d.id];
+    if (ref && d.views > 0) {
+      const growth = ((d.views - ref.v) / ref.v) * 100;
+      if (Math.abs(ref.age - 7 * 86400000) < 4 * 86400000 && Math.abs(growth) >= 3) {
+        const cls = growth > 0 ? 'up' : 'down';
+        add({ icon: '📈', cls, text: `${d.name}: crecimiento semanal ${growth > 0 ? '+' : ''}${growth.toFixed(0)}%.` });
+      }
+    }
+  }
+  return out;
+}
+
+function renderPersonalAlerts() {
+  const box = $('#alerts-personal');
+  const empty = $('#alerts-personal-empty');
+  if (!box) return;
+  if (!state.data.size) { box.innerHTML = ''; return; }
+  const alerts = personalAlerts();
+  if (!alerts.length) {
+    box.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+  box.innerHTML = alerts.map((a) => `
+    <div class="pers-alert ${a.cls}">
+      <span class="pers-icon">${a.icon}</span>
+      <span class="pers-text">${esc(a.text)}</span>
+      ${a.video ? `<a class="pers-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(a.video)}" target="_blank" rel="noopener">Ver →</a>` : ''}
+    </div>`).join('');
 }
 
 /* ============================================================

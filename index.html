@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -79,6 +79,16 @@
             </select>
           </div>
           <div id="summary-cards" class="cards-grid"></div>
+          <div class="panel">
+            <div class="panel-title">
+              <h2>🧠 Alertas personales</h2>
+              <p class="muted small">Hallazgos automáticos de tu rendimiento: sobre/bajo promedio, récords, inactividad y crecimiento semanal.</p>
+            </div>
+            <div id="alerts-personal-empty" class="momentum-empty hidden">
+              <p>🎉 Todo bajo control por ahora. Las alertas aparecen aquí solas al cargar datos (↻).</p>
+            </div>
+            <div id="alerts-personal"></div>
+          </div>
           <div class="panel ww-section">
             <div class="panel-title">
               <h2>🔥 Lo que está funcionando</h2>
@@ -335,6 +345,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>
