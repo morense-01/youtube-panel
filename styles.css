@@ -475,6 +475,64 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .mom-item.mho .mom-spark polyline { stroke: var(--primary); }
 
+/* ============ Patrones ============ */
+.patterns-panel { gap: 8px; }
+#patterns { display: flex; flex-direction: column; gap: 18px; }
+.pat-channel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pat-channel-head .avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; }
+.pat-channel-head h3 { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+.pat-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  box-shadow: var(--shadow-sm);
+}
+.pat-icon {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.pat-body { flex: 1; min-width: 0; }
+.pat-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.pat-value {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.pat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
 /* ============ Videos ============ */
 .channel-block { margin-bottom: 22px; }
 .channel-block-head {
@@ -1061,6 +1119,7 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 @media (min-width: 640px) {
   .cards-grid { grid-template-columns: repeat(2, 1fr); }
   .ww-grid { grid-template-columns: repeat(2, 1fr); }
+  .pat-grid { grid-template-columns: repeat(2, 1fr); }
   .modal { align-items: center; }
   .modal-card { border-radius: 20px; max-width: 480px; }
   .tabbar {
@@ -1076,4 +1135,5 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 @media (min-width: 1024px) {
   .cards-grid { grid-template-columns: repeat(3, 1fr); }
   .ww-grid { grid-template-columns: repeat(3, 1fr); }
+  .pat-grid { grid-template-columns: repeat(3, 1fr); }
 }

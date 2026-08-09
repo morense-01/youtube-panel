@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -91,6 +91,16 @@
               <p>🔍 Necesitas <strong>al menos 2 cargas de datos</strong> (pulsa ↻ y vuelve otro día o más tarde) para que el panel note cuál crece más rápido.</p>
             </div>
             <div id="momentum-list"></div>
+          </div>
+          <div class="panel patterns-panel">
+            <div class="panel-title">
+              <h2>🧬 Patrones de tus videos</h2>
+              <p class="muted small">Qué comparten tus videos con mejor Viral Score: duración, hora de publicación, tema, formato e interacción.</p>
+            </div>
+            <div id="patterns-empty" class="momentum-empty">
+              <p>🧪 Necesitas <strong>al menos 3 videos por canal</strong> con datos cargados para que detectemos tus patrones ganadores.</p>
+            </div>
+            <div id="patterns"></div>
           </div>
           <div class="panel">
             <div class="panel-title">
@@ -262,6 +272,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

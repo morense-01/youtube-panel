@@ -494,6 +494,7 @@ function renderAll() {
   renderVideos();
   renderRanking();
   renderMomentum();
+  renderPatterns();
   renderHistory();
   $('#lbl-updated').textContent =
     `Actualizado: ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
@@ -951,6 +952,162 @@ function renderMomentum() {
   }
   if (empty) empty.classList.add('hidden');
   box.innerHTML = list.map(momentumHTML).join('');
+}
+
+/* ============================================================
+   🧬 Patrones: qué comparten los videos con mejor Viral Score
+   ============================================================ */
+function quantile(sorted, q) {
+  if (!sorted.length) return 0;
+  const idx = (sorted.length - 1) * q;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+const PAT_STOPWORDS = new Set((
+  'de la el en es a los las con que un una del para por su mas sin o y al este esta '
+  + 'ese como pero no asi si ya mis mi tu tus todo toda todos todas hoy hoyy aqui ha '
+  + 'vs shorts short video videos canal mins mundo'
+).trim().split(/\s+/));
+
+function patternKeywords(titles) {
+  const counts = {};
+  for (const t of titles) {
+    String(t || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .split(/\s+/)
+      .forEach((w) => {
+        if (w.length > 3 && !PAT_STOPWORDS.has(w) && !/^\d+$/.test(w)) counts[w] = (counts[w] || 0) + 1;
+      });
+  }
+  return Object.entries(counts)
+    .filter(([, c]) => c >= 2)
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+    .slice(0, 2)
+    .map(([w]) => w.charAt(0).toUpperCase() + w.slice(1));
+}
+
+function fmtDurRange(lo, hi) {
+  const f = (s) => (s < 60 ? `${Math.round(s)} seg` : fmtDurSec(s));
+  return hi <= lo + 1 ? f(lo) : `${f(lo)} – ${f(hi)}`;
+}
+
+function fmtHourWindow(h) {
+  const f = (x) => {
+    const hh = x % 24;
+    const period = hh >= 12 ? 'PM' : 'AM';
+    const h12 = hh % 12 || 12;
+    return `${h12}:00 ${period}`;
+  };
+  return `${f(h)} – ${f(h + 2)}`;
+}
+
+function computePatterns(bag) {
+  const videos = (bag.videos || [])
+    .map((v) => ({ v, score: computeViralScore(v, bag).total }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6)
+    .map((x) => x.v);
+  const n = videos.length;
+  if (n < 3) return null;
+
+  const durs = videos.map((v) => durSeconds(v.duration)).sort((a, b) => a - b);
+  const durLo = quantile(durs, 0.25);
+  const durHi = quantile(durs, 0.75);
+
+  const bins = {};
+  for (const v of videos) {
+    const b = Math.floor(new Date(v.published).getHours() / 2) * 2;
+    bins[b] = (bins[b] || 0) + 1;
+  }
+  const bestBin = Number(Object.keys(bins).sort((a, b) => bins[b] - bins[a] || Number(a) - Number(b))[0]);
+
+  const kws = patternKeywords(videos.map((v) => v.title));
+
+  const engs = videos
+    .map((v) => (v.views ? (Number(v.likes) + Number(v.comments)) / v.views : 0))
+    .filter((x) => x > 0)
+    .sort((a, b) => a - b);
+
+  const shortsCount = videos.filter((v) => String(v.categoryId) === '42').length;
+
+  return {
+    n,
+    durLo, durHi,
+    bestBin, binCount: bins[bestBin],
+    kws,
+    engs,
+    shortsCount, shortShare: shortsCount / n,
+    medDur: quantile(durs, 0.5),
+  };
+}
+
+function patRow(icon, label, value, sub) {
+  return `
+    <div class="pat-row">
+      <div class="pat-icon">${icon}</div>
+      <div class="pat-body">
+        <div class="pat-label">${esc(label)}</div>
+        <div class="pat-value">${esc(value)}</div>
+        ${sub ? `<div class="pat-sub">${esc(sub)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function patRowsHTML(p) {
+  const format = p.shortShare >= 0.6 ? 'Shorts'
+    : p.shortShare <= 0.4 ? 'Videos largos'
+    : 'Mixto entre Shorts y largos';
+  const rows = [
+    patRow('⏱️', 'Duración', fmtDurRange(p.durLo, p.durHi),
+      `Rango típico entre los ${p.n} mejores por Viral Score`),
+    patRow('🕐', 'Publicación', p.binCount >= 2 ? fmtHourWindow(p.bestBin) : 'Variado',
+      p.binCount >= 2
+        ? `Ventana de 2 h que se repite en ${p.binCount} de ${p.n} videos`
+        : 'Sin una hora clara: cada video se publicó a horas distintas'),
+    patRow('🧠', 'Tema', p.kws.length ? p.kws.map((k) => `#${k}`).join(' ') : 'Variado',
+      p.kws.length
+        ? 'Palabras más repetidas en los títulos de tus mejores videos'
+        : 'Los títulos no comparten palabras clave claras (publica y vuelve a cargar)'),
+    patRow('🎬', 'Formato', format,
+      `${p.shortsCount} de ${p.n} son Shorts`),
+    patRow('💬', 'Interacción', p.engs.length ? pct(quantile(p.engs, 0.5)) : 'Sin señales aún',
+      p.engs.length
+        ? 'Mediana de (likes + comentarios) / vistas'
+        : 'Aún no hay suficientes likes o comentarios medibles'),
+  ];
+  return rows.join('');
+}
+
+function renderPatterns() {
+  const box = $('#patterns');
+  if (!box) return;
+  if (!state.data.size) { box.innerHTML = ''; return; }
+  const filter = $('#channel-filter').value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+  box.innerHTML = '';
+  let any = false;
+  for (const bag of bagList) {
+    const p = computePatterns(bag);
+    if (!p) continue;
+    any = true;
+    const d = bag.data;
+    box.insertAdjacentHTML('beforeend', `
+      <div class="pat-channel">
+        <div class="pat-channel-head">
+          <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <h3>${esc(d.name)}</h3>
+        </div>
+        <div class="pat-grid">${patRowsHTML(p)}</div>
+      </div>`);
+  }
+  const empty = $('#patterns-empty');
+  if (empty) empty.classList.toggle('hidden', any);
 }
 
 function wwCardFor(analysis, used, { type, emoji, metric, threshold, numFn, rest, subFn }) {
