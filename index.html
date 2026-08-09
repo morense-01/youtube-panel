@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -22,6 +22,10 @@
       <div class="topbar-actions">
         <button class="icon-btn" id="btn-refresh" title="Actualizar datos" aria-label="Actualizar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-alerts" title="Alertas" aria-label="Alertas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span id="alerts-badge" class="alerts-badge hidden">0</span>
         </button>
         <button class="icon-btn" id="btn-settings" title="Configuración" aria-label="Configuración">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -225,6 +229,25 @@
             <p class="muted small">A mayor cantidad, más llamadas a la API y más tiempo de carga.</p>
           </div>
 
+          <div class="panel">
+            <div class="panel-title"><h2>🔔 Alertas por video</h2></div>
+            <label class="field-toggle">
+              <span class="label">Activar alertas</span>
+              <input type="checkbox" id="switch-alerts" />
+            </label>
+            <div class="field-pair">
+              <label class="field">
+                <span class="label">Mínimo de vistas</span>
+                <input type="number" id="input-minviews" min="0" step="100" inputmode="numeric" />
+              </label>
+              <label class="field">
+                <span class="label">Viral Score mín.</span>
+                <input type="number" id="input-minscore" min="0" max="100" step="5" inputmode="numeric" />
+              </label>
+            </div>
+            <p class="muted small">Se revisan en cada carga de datos (↻). Cada video avisa una vez por umbral, y puedes descartar avisos desde la campana 🔔. Pon <strong>0</strong> para ignorar un umbral.</p>
+          </div>
+
           <div class="panel danger">
             <div class="panel-title"><h2>Zona de peligro</h2></div>
             <p class="muted small">Borra todos los datos guardados en este navegador.</p>
@@ -271,7 +294,24 @@
     </div>
   </div>
 
+  <div id="alerts-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="alerts-backdrop"></div>
+    <div class="modal-card" role="dialog" aria-live="polite">
+      <div class="modal-head">
+        <h3>🔔 Alertas</h3>
+        <button class="modal-close" id="alerts-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="alerts-empty" class="momentum-empty hidden">
+        <p>🎉 Sin alertas por ahora. Cuando un video cruce el umbral de vistas o el Viral Score, aparecerá aquí.</p>
+      </div>
+      <div id="alerts-list"></div>
+      <div class="alerts-foot" id="alerts-foot">
+        <button class="btn btn-ghost" id="btn-clear-alerts">Descartar todas</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

@@ -18,6 +18,9 @@ const KEYS = {
   history: 'ytPanel.history',
   lastData: 'ytPanel.lastData',
   snapshots: 'ytPanel.snapshots',
+  alertCfg: 'ytPanel.alertCfg',
+  alertLog: 'ytPanel.alertLog',
+  alertDismissed: 'ytPanel.alertDismissed',
 };
 
 /* ---------- Utilidades ---------- */
@@ -100,6 +103,11 @@ function escAttr(s) {
 let apiKey = store.get(KEYS.apikey, '');
 let channels = store.get(KEYS.channels, []);
 let maxVideos = store.get(KEYS.maxVideos, 10);
+
+const ALERT_DEFAULTS = { enabled: true, minViews: 1000, minScore: 75 };
+let alertCfg = Object.assign({}, ALERT_DEFAULTS, store.get(KEYS.alertCfg, {}));
+let alertLog = store.get(KEYS.alertLog, []) || [];
+let alertDismissed = store.get(KEYS.alertDismissed, []) || [];
 
 function persistChannels() { store.set(KEYS.channels, channels); }
 
@@ -473,7 +481,8 @@ async function loadStats() {
     recordSnapshot();
     recordVideoSnapshots();
     renderAll();
-    showToast('Datos actualizados', 'success');
+    const alerts = detectAlerts();
+    showToast(alerts ? `Datos actualizados · ${alerts} alerta${alerts === 1 ? '' : 's'} nueva${alerts === 1 ? '' : 's'}` : 'Datos actualizados', 'success');
   } catch (e) {
     showToast(e?.message || 'No se pudieron cargar los datos.', 'error');
   } finally {
@@ -754,6 +763,135 @@ function openScoreModal(videoId) {
 function closeScoreModal() {
   $('#score-modal').classList.add('hidden');
   $('#score-modal').setAttribute('aria-hidden', 'true');
+}
+
+/* ============================================================
+   🔔 Alertas: avisan una vez por video/umbral cuando se cruza
+   un mínimo de vistas o cierto Viral Score, en cada carga.
+   ============================================================ */
+function persistAlert() { store.set(KEYS.alertLog, alertLog); }
+
+function detectAlerts() {
+  const dismissed = new Set(alertDismissed);
+  alertLog = alertLog.filter((a) =>
+    a.type === 'views'
+      ? (alertCfg.minViews > 0 && a.value >= alertCfg.minViews)
+      : (alertCfg.minScore > 0 && a.value >= alertCfg.minScore)
+  );
+  const seen = new Set(alertLog.map((a) => a.key));
+  const pending = [];
+  if (alertCfg.enabled) {
+    for (const [, bag] of state.data) {
+      const d = bag.data;
+      for (const v of (bag.videos || [])) {
+        const views = Number(v.views) || 0;
+        if (alertCfg.minViews > 0 && views >= alertCfg.minViews && !dismissed.has(`${v.id}:views`)) {
+          pending.push({ key: `${v.id}:views`, videoId: v.id, channel: d.name, title: v.title,
+            type: 'views', value: views, score: computeViralScore(v, bag).total, at: Date.now() });
+        }
+        if (alertCfg.minScore > 0) {
+          const score = computeViralScore(v, bag).total;
+          if (score >= alertCfg.minScore && !dismissed.has(`${v.id}:score`)) {
+            pending.push({ key: `${v.id}:score`, videoId: v.id, channel: d.name, title: v.title,
+              type: 'score', value: score, score, at: Date.now() });
+          }
+        }
+      }
+    }
+  }
+  const fresh = pending.filter((a) => !seen.has(a.key)).length;
+  alertLog = alertLog
+    .concat(pending.filter((a) => !seen.has(a.key)))
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 40);
+  persistAlert();
+  renderAlertBadge();
+  return fresh;
+}
+
+function renderAlertBadge() {
+  const b = $('#alerts-badge');
+  if (!b) return;
+  const n = alertLog.length;
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.classList.toggle('hidden', n === 0);
+}
+
+function alertItemHTML(a) {
+  const score = scoreLevel(a.score || 0);
+  const chip = a.type === 'views'
+    ? `<span class="al-chip al-views">🔥 Más de <b>${fmtCount(a.value)}</b> vistas</span>`
+    : `<span class="al-chip al-score">💥 Viral Score <b>${a.value}</b></span>`;
+  const date = new Date(a.at).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return `
+    <div class="alert-item">
+      <div class="alert-body">
+        <div class="al-top">${chip}<span class="al-date">${esc(date)}</span></div>
+        <a class="alert-title" href="https://www.youtube.com/watch?v=${encodeURIComponent(a.videoId)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+        <div class="alert-meta">${esc(a.channel)}</div>
+        <button class="score-mini lv-${score.cls}" data-score-video="${escAttr(a.videoId)}" title="Ver el Viral Score">
+          <span class="sm-icon">${score.icon}</span><span class="sm-num">${a.score || 0}</span><span class="sm-label">Viral</span>
+        </button>
+      </div>
+      <button class="alert-dismiss" data-dismiss="${escAttr(a.key)}" aria-label="Descartar esta alerta" title="Descartar">✕</button>
+    </div>`;
+}
+
+function renderAlerts() {
+  const list = $('#alerts-list');
+  if (!list) return;
+  const empty = $('#alerts-empty');
+  const foot = $('#alerts-foot');
+  if (!alertLog.length) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    foot.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  foot.classList.remove('hidden');
+  list.innerHTML = alertLog.map(alertItemHTML).join('');
+}
+
+function openAlerts() {
+  renderAlerts();
+  $('#alerts-modal').classList.remove('hidden');
+  $('#alerts-modal').setAttribute('aria-hidden', 'false');
+}
+
+function closeAlerts() {
+  $('#alerts-modal').classList.add('hidden');
+  $('#alerts-modal').setAttribute('aria-hidden', 'true');
+}
+
+function dismissAlert(key) {
+  alertLog = alertLog.filter((a) => a.key !== key);
+  alertDismissed = alertDismissed.filter((k) => k !== key).concat(key);
+  store.set(KEYS.alertDismissed, alertDismissed);
+  persistAlert();
+  renderAlerts();
+  renderAlertBadge();
+}
+
+function clearAlerts() {
+  alertDismissed = alertDismissed.concat(alertLog.map((a) => a.key));
+  alertLog = [];
+  store.set(KEYS.alertDismissed, alertDismissed);
+  persistAlert();
+  renderAlerts();
+  renderAlertBadge();
+  showToast('Todas las alertas fueron descartadas.', 'success');
+}
+
+function updateAlertCfg() {
+  alertCfg = {
+    enabled: $('#switch-alerts').checked,
+    minViews: Math.max(0, parseInt($('#input-minviews').value, 10) || 0),
+    minScore: Math.min(100, Math.max(0, parseInt($('#input-minscore').value, 10) || 0)),
+  };
+  store.set(KEYS.alertCfg, alertCfg);
+  renderAlertBadge();
+  detectAlerts();
 }
 
 /* ============================================================
@@ -1341,6 +1479,9 @@ function setupSettings() {
   $('#input-apikey').value = apiKey;
   $('#input-maxvideos').value = maxVideos;
   $('#lbl-maxvideos').textContent = `${maxVideos} videos`;
+  $('#switch-alerts').checked = alertCfg.enabled;
+  $('#input-minviews').value = alertCfg.minViews || 0;
+  $('#input-minscore').value = alertCfg.minScore || 0;
   renderChannelList();
 }
 
@@ -1434,6 +1575,20 @@ function bindEvents() {
   $$('[data-action]').forEach((b) => b.addEventListener('click', openSettings));
   $('#btn-settings').addEventListener('click', openSettings);
 
+  $('#btn-alerts').addEventListener('click', openAlerts);
+  $('#btn-clear-alerts').addEventListener('click', clearAlerts);
+  $('#alerts-close').addEventListener('click', closeAlerts);
+  $('#alerts-backdrop').addEventListener('click', closeAlerts);
+  $('#alerts-list').addEventListener('click', (e) => {
+    const dismiss = e.target.closest('[data-dismiss]');
+    if (dismiss) { dismissAlert(dismiss.dataset.dismiss); return; }
+    const mini = e.target.closest('.score-mini');
+    if (mini) openScoreModal(mini.dataset.scoreVideo);
+  });
+  $('#switch-alerts').addEventListener('change', updateAlertCfg);
+  ['#input-minviews', '#input-minscore'].forEach((sel) =>
+    $(sel).addEventListener('change', updateAlertCfg));
+
   $('#channel-filter').addEventListener('change', () => { renderSummary(); renderWhatsWorking(); });
 
   $('#btn-save-key').addEventListener('click', saveKey);
@@ -1462,6 +1617,7 @@ function bindEvents() {
   $('#score-backdrop').addEventListener('click', closeScoreModal);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !$('#score-modal').classList.contains('hidden')) closeScoreModal();
+    if (e.key === 'Escape' && !$('#alerts-modal').classList.contains('hidden')) closeAlerts();
   });
 
   $('#btn-reset').addEventListener('click', () => {
@@ -1546,5 +1702,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   setupSettings();
   refreshScreens();
+  renderAlertBadge();
   if (apiKey && channels.length) loadStats();
 });
