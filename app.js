@@ -1036,7 +1036,7 @@ function personalAlerts() {
     }
     if (bestOver && bestOver.ratio >= 1.5 && bestOver.ratio < 2) {
       add({ icon: '🟢', cls: 'up', video: bestOver.v.id,
-        text: `${d.name}: «${truncTitle(bestOver.v.title, 40)}» está ${bestOver.ratio.toFixed(1)}X sobre tu promedio.` });
+        text: `${d.name}: «${truncTitle(bestOver.v.title, 40)}» está +${Math.round((bestOver.ratio - 1) * 100)}% por encima de tu promedio.` });
     }
     if (bestUnder && bestUnder.ratio <= 0.6) {
       add({ icon: '🔴', cls: 'down', video: bestUnder.v.id,
@@ -1573,7 +1573,7 @@ function computeViralScore(v, bag) {
       key: 'views', label: 'Rendimiento', max: 50,
       frac: avgViews > 0 ? clamp01((views / avgViews) / 2.5) : 0,
       detail: avgViews > 0
-        ? `${fmtCount(views)} vistas vs ${fmtCount(Math.round(avgViews))} promedio por video (${(views / avgViews).toFixed(2)}X)`
+        ? `${fmtCount(views)} vistas vs ${fmtCount(Math.round(avgViews))} promedio por video (+${Math.round(((views / avgViews) - 1) * 100)}%)`
         : `${fmtCount(views)} vistas sin promedio de referencia aún`,
     },
     {
@@ -1911,20 +1911,20 @@ function renderWhatsWorking() {
     const html = [
       wwCardFor(analysis, used, {
         type: 'views', emoji: '🔥', metric: 'viewsRatio', threshold: 1.15,
-        numFn: (c) => `${c.viewsRatio.toFixed(1)}X`,
-        rest: 'mejor que tu promedio',
+        numFn: (c) => `+${Math.round((c.viewsRatio - 1) * 100)}%`,
+        rest: 'más vistas que tu promedio',
         subFn: () => `Rendimiento vs ${fmtCount(Math.round(analysis.avgViews))} vistas por video de promedio`,
       }),
       wwCardFor(analysis, used, {
         type: 'momentum', emoji: '⚡', metric: 'dailyRatio', threshold: 1.15,
-        numFn: (c) => `${c.dailyRatio.toFixed(1)}X`,
-        rest: 'el ritmo diario de tu canal',
+        numFn: (c) => `+${Math.round((c.dailyRatio - 1) * 100)}%`,
+        rest: 'más rápido que el ritmo diario de tu canal',
         subFn: (c) => `Suma ~${fmtCount(Math.round(c.daily))} vistas/día vs ${fmtCount(Math.round(analysis.avgDaily))} del promedio`,
       }),
       wwCardFor(analysis, used, {
         type: 'interaction', emoji: '💬', metric: 'interRatio', threshold: 1.15,
-        numFn: (c) => `${c.interRatio.toFixed(1)}X`,
-        rest: 'más activa tu comunidad',
+        numFn: (c) => `+${Math.round((c.interRatio - 1) * 100)}%`,
+        rest: 'más interacción que tu promedio',
         subFn: (c) => analysis.avgCmt > 0
           ? `${pct(c.cmt)} de comentarios vs ${pct(analysis.avgCmt)} de promedio`
           : `${pct(c.eng)} de interacción vs ${pct(analysis.avgEng)} de promedio`,
