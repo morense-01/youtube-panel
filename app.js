@@ -502,6 +502,7 @@ async function loadStats() {
 function renderAll() {
   renderFilterOptions();
   renderSummary();
+  renderHealth();
   renderWhatsWorking();
   renderComparison();
   renderChannelRanks();
@@ -1196,6 +1197,157 @@ function renderGoals() {
         ${rows.join('')}
       </div>`;
   }).join('');
+}
+
+/* ============================================================
+   📊 Estado del canal (Channel Health): 0-100 con 5 métricas
+   calculadas solo con los datos propios del canal + historial.
+   ============================================================ */
+const H_LABELS = {
+  growth: 'Crecimiento',
+  consistency: 'Consistencia',
+  engagement: 'Engagement',
+  views: 'Views',
+  freq: 'Frecuencia',
+};
+const H_PROBLEM = {
+  growth: 'crecimiento',
+  consistency: 'consistencia entre tus videos',
+  engagement: 'engagement',
+  views: 'rendimiento de tus views',
+  freq: 'frecuencia de publicación',
+};
+
+function healthLevel(score) {
+  if (score >= 75) return { icon: '🟢', cls: 'good', label: 'Saludable' };
+  if (score >= 55) return { icon: '🟡', cls: 'mid', label: 'Aceptable' };
+  return { icon: '🔴', cls: 'bad', label: 'En riesgo' };
+}
+
+function healthTone(v) {
+  return v >= 75 ? 'good' : v >= 55 ? 'mid' : 'bad';
+}
+
+/* Views de un video relativos al promedio: reutiliza la escala de Viral Score */
+function relViews(v, avgViews) {
+  return avgViews > 0 ? (Number(v.views) || 0) / avgViews : 0;
+}
+
+function channelHealth(bag) {
+  const d = bag.data;
+  const videos = bag.videos || [];
+  const n = videos.length;
+  const sum = (f) => videos.reduce((a, v) => a + (f(v) || 0), 0);
+  const avgViews = d.videos > 0 ? d.views / d.videos : (n ? sum((v) => v.views) / n : 0);
+  const engRate = (v) => (Number(v.views) || 0) > 0
+    ? (Number(v.likes || 0) + Number(v.comments || 0)) / Number(v.views)
+    : 0;
+  const avgEng = n ? sum(engRate) / n : 0;
+
+  // Crecimiento: % real de views de los últimos ~30 días sobre el total
+  const mViews = monthlyViews(bag);
+  const growth = mViews > 0
+    ? Math.round(clamp01(mViews / Math.max(d.views, mViews) * 5) * 100)
+    : 40;
+
+  // Consistencia: cuán estables son los videos recientes frente a su promedio
+  let consistency = 50;
+  if (n >= 2 && avgViews > 0) {
+    const ratios = videos.slice(0, 8).map((v) => relViews(v, avgViews));
+    const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+    const aad = ratios.reduce((a, b) => a + Math.abs(b - mean), 0) / ratios.length;
+    consistency = Math.round(clamp01(1 - aad / Math.max(mean, 0.001)) * 100);
+  }
+
+  // Engagement: interacción media de tus videos frente a tu propio promedio
+  const engagement = n && avgEng > 0
+    ? Math.round((sum((v) => clamp01((engRate(v) / avgEng) / 1.2)) / n) * 100)
+    : 50;
+
+  // Views: cómo rinden tus videos frente al promedio del canal
+  const views = n && avgViews > 0
+    ? Math.round((sum((v) => clamp01((relViews(v, avgViews) / 1.5))) / n) * 100)
+    : 50;
+
+  // Frecuencia: cadencia media de publicación (gap mediano en días)
+  let freq = 50;
+  if (n >= 2) {
+    const times = videos.map((v) => new Date(v.published).getTime())
+      .filter((t) => Number.isFinite(t) && !Number.isNaN(t))
+      .sort((a, b) => b - a);
+    if (times.length >= 2) {
+      const gaps = [];
+      for (let i = 1; i < times.length; i++) gaps.push((times[i - 1] - times[i]) / 86400000);
+      gaps.sort((a, b) => a - b);
+      const med = gaps[Math.floor(gaps.length / 2)];
+      freq = Math.round(clamp01(7 / Math.max(med, 0.5)) * 100);
+    }
+  }
+
+  const overall = Math.round((growth + consistency + engagement + views + freq) / 5);
+  return { growth, consistency, engagement, views, freq, overall, hasData: n > 0 };
+}
+
+function healthCardHTML(bag) {
+  const d = bag.data;
+  const h = channelHealth(bag);
+  if (!h.hasData) {
+    return `
+      <div class="health-card hl-bad">
+        <div class="health-head">
+          <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="health-ident">
+            <span class="health-name">Canal: ${esc(d.name)}</span>
+            <span class="health-lbl">CHANNEL HEALTH</span>
+          </div>
+        </div>
+        <p class="health-nodata">Sin datos de videos aún. Pulsa ↻ para cargar y medir el estado del canal.</p>
+      </div>`;
+  }
+  const lv = healthLevel(h.overall);
+  let minKey = 'growth', minVal = h.growth;
+  for (const k of ['consistency', 'engagement', 'views', 'freq']) {
+    if (h[k] < minVal) { minVal = h[k]; minKey = k; }
+  }
+  const items = Object.entries(H_LABELS).map(([k, label]) => {
+    const v = h[k];
+    return `
+      <div class="health-item ${healthTone(v)}">
+        <span class="health-metric">${label}</span>
+        <div class="health-val"><b>${v}</b><span class="health-bar"><i style="width:${v}%"></i></span></div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="health-card hl-${lv.cls}">
+      <div class="health-head">
+        <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+        <div class="health-ident">
+          <span class="health-name">Canal: ${esc(d.name)}</span>
+          <span class="health-lbl">CHANNEL HEALTH</span>
+        </div>
+      </div>
+      <div class="health-score">
+        <span class="health-num">${lv.icon} ${h.overall}</span>
+        <span class="health-total">/100</span>
+        <span class="health-level ${lv.cls}">${lv.label}</span>
+      </div>
+      <div class="health-grid">${items}</div>
+      ${minKey ? `<p class="health-problem">Principal problema: <b>${H_PROBLEM[minKey]}</b> (<b>${minVal}</b>).</p>` : ''}
+    </div>`;
+}
+
+function renderHealth() {
+  const box = $('#health');
+  const empty = $('#health-empty');
+  if (!box) return;
+  if (!state.data.size) { box.innerHTML = ''; return; }
+  const filter = $('#channel-filter').value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+  if (!bagList.length) { box.innerHTML = ''; return; }
+  if (empty) empty.classList.add('hidden');
+  box.innerHTML = bagList.map(healthCardHTML).join('');
 }
 
 /* ============================================================
@@ -2188,7 +2340,7 @@ function bindEvents() {
   ['#input-minviews', '#input-minscore'].forEach((sel) =>
     $(sel).addEventListener('change', updateAlertCfg));
 
-  $('#channel-filter').addEventListener('change', () => { renderSummary(); renderWhatsWorking(); renderGoals(); });
+  $('#channel-filter').addEventListener('change', () => { renderSummary(); renderHealth(); renderWhatsWorking(); renderGoals(); });
 
   $('#btn-save-key').addEventListener('click', saveKey);
   $('#btn-test-key').addEventListener('click', testKey);

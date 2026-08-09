@@ -1303,6 +1303,46 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 .goal-pct.good, .goal-level.good { color: var(--success); }
 .goal-pct.mid, .goal-level.mid { color: var(--warning); }
 .goal-pct.far, .goal-level.far { color: var(--danger); }
+
+/* ============ Estado del canal (Channel Health) ============ */
+.health-grid-all { display: grid; gap: 12px; }
+.health-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 15px 16px;
+}
+.health-card.hl-good { border-color: rgba(52, 211, 153, 0.35); }
+.health-card.hl-mid { border-color: rgba(251, 191, 36, 0.35); }
+.health-card.hl-bad { border-color: rgba(248, 113, 113, 0.35); }
+.health-head { display: flex; align-items: center; gap: 10px; }
+.health-head .avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+.health-ident { min-width: 0; }
+.health-name { font-size: 13px; font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.health-lbl { font-size: 10px; letter-spacing: 0.16em; font-weight: 800; color: var(--text-muted); }
+.health-nodata { font-size: 12.5px; color: var(--text-muted); margin: 12px 0 0; }
+.health-score { display: flex; align-items: baseline; gap: 7px; margin: 14px 0 4px; }
+.health-num { font-size: 34px; font-weight: 900; letter-spacing: -0.03em; }
+.health-total { font-size: 14px; color: var(--text-muted); font-weight: 700; }
+.health-level { margin-left: auto; font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 99px; }
+.health-level.good { color: var(--success); background: rgba(52, 211, 153, 0.12); }
+.health-level.mid { color: var(--warning); background: rgba(251, 191, 36, 0.12); }
+.health-level.bad { color: var(--danger); background: rgba(248, 113, 113, 0.12); }
+.health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 12px 0; }
+.health-item { display: flex; flex-direction: column; gap: 4px; }
+.health-metric { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+.health-val { display: flex; align-items: center; gap: 8px; }
+.health-val b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.health-item.good b { color: var(--success); }
+.health-item.mid b { color: var(--warning); }
+.health-item.bad b { color: var(--danger); }
+.health-bar { flex: 1; height: 6px; background: var(--surface); border-radius: 99px; overflow: hidden; }
+.health-bar i { display: block; height: 100%; border-radius: 99px; transition: width 0.5s var(--ease); }
+.health-item.good .health-bar i { background: var(--success); }
+.health-item.mid .health-bar i { background: var(--warning); }
+.health-item.bad .health-bar i { background: var(--danger); }
+.health-problem { font-size: 12.5px; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: 10px; margin: 0; }
+.health-problem b { color: var(--text); }
 .remove-btn {
   background: none;
   border: none;
@@ -1453,6 +1493,7 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   .ww-grid { grid-template-columns: repeat(2, 1fr); }
   .pat-grid { grid-template-columns: repeat(2, 1fr); }
   .idea-grid { grid-template-columns: repeat(2, 1fr); }
+  .health-grid-all { grid-template-columns: repeat(2, 1fr); }
   .modal { align-items: center; }
   .modal-card { border-radius: 20px; max-width: 480px; }
   .tabbar {
