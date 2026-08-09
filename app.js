@@ -17,6 +17,7 @@ const KEYS = {
   maxVideos: 'ytPanel.maxVideos',
   history: 'ytPanel.history',
   lastData: 'ytPanel.lastData',
+  snapshots: 'ytPanel.snapshots',
 };
 
 /* ---------- Utilidades ---------- */
@@ -383,6 +384,24 @@ function recordSnapshot() {
   store.set(KEYS.history, hist.slice(-180));
 }
 
+/* Snapshot de vistas por video: guarda la última vista de cada video para
+   medir el crecimiento entre cargas y detectar videos en aceleración. */
+function recordVideoSnapshots() {
+  const time = Date.now();
+  const snaps = store.get(KEYS.snapshots, []);
+  const entry = { t: time, videos: {} };
+  for (const [, bag] of state.data) {
+    for (const v of (bag.videos || [])) {
+      entry.videos[v.id] = { c: bag.data.id, v: v.views };
+    }
+  }
+  if (!Object.keys(entry.videos).length) return;
+  const last = snaps[snaps.length - 1];
+  if (last && Math.abs(time - last.t) < 10 * 60 * 1000) last.videos = { ...last.videos, ...entry.videos };
+  else snaps.push(entry);
+  store.set(KEYS.snapshots, snaps.slice(-90));
+}
+
 /* Punto manual: guarda uno nuevo aunque ya exista uno hoy (ver evolución sin esperar) */
 function recordManualPoint() {
   const points = buildPoints();
@@ -452,6 +471,7 @@ async function loadStats() {
 
     persistLastData();
     recordSnapshot();
+    recordVideoSnapshots();
     renderAll();
     showToast('Datos actualizados', 'success');
   } catch (e) {
@@ -473,6 +493,7 @@ function renderAll() {
   renderRank();
   renderVideos();
   renderRanking();
+  renderMomentum();
   renderHistory();
   $('#lbl-updated').textContent =
     `Actualizado: ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
@@ -852,6 +873,86 @@ function analyzeWhatsWorking(d, videos) {
   return { avgViews, avgEng, avgCmt, avgDur, avgDaily, cards };
 }
 
+/* ============================================================
+   Momentum: detecta videos que están acelerando entre cargas
+   ============================================================ */
+function momentumList() {
+  const snaps = store.get(KEYS.snapshots, []);
+  if (snaps.length < 2) return [];
+  const out = [];
+  for (const [, bag] of state.data) {
+    for (const v of (bag.videos || [])) {
+      const series = snaps
+        .map((s) => ({ t: s.t, views: s.videos[v.id]?.v }))
+        .filter((p) => typeof p.views === 'number')
+        .sort((a, b) => a.t - b.t);
+      if (series.length < 2) continue;
+      const a = series[0];
+      const b = series[series.length - 1];
+      const dt = Math.max((b.t - a.t) / 86400000, 0.1);
+      const dv = b.views - a.views;
+      if (dv <= 0) continue;
+      const rate = dv / dt; // vistas/día en este lapso
+      const days = Math.max((Date.now() - new Date(v.published)) / 86400000, 1);
+      const base = v.views / days; // ritmo medio del propio video desde publicación
+      const ratio = base > 0 ? rate / base : 0;
+      out.push({ v, bag, rate, base, ratio, series });
+    }
+  }
+  return out.filter((m) => m.ratio >= 2).sort((a, b) => b.ratio - a.ratio).slice(0, 6);
+}
+
+function momentumHTML(m) {
+  const v = m.v;
+  const score = computeViralScore(v, m.bag).total;
+  const lvCls = scoreLevel(score).cls;
+  const pts = m.series;
+  const min = Math.min(...pts.map((p) => p.views));
+  const max = Math.max(...pts.map((p) => p.views));
+  const range = (max - min) || 1;
+  const W = 120, H = 40;
+  const last = pts.length - 1;
+  const poly = pts.map((p, i) => {
+    const x = (i / last) * W;
+    const y = H - 4 - ((p.views - min) / range) * (H - 10);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const pct = Math.round((m.ratio - 1) * 100);
+  const lv = m.ratio >= 4 ? 'mho' : 'mhi';
+  return `
+    <div class="mom-item ${lv}">
+      <div class="mom-main">
+        <a class="mom-title" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+        <div class="mom-meta">${esc(m.bag.data.name)} · ${fmtCount(v.views)} vistas</div>
+        <button class="score-mini lv-${lvCls}" data-score-video="${escAttr(v.id)}" title="Ver el Viral Score">
+          <span class="sm-icon">${scoreLevel(score).icon}</span><span class="sm-num">${score}</span><span class="sm-label">Viral</span>
+        </button>
+      </div>
+      <div class="mom-right">
+        <div class="mom-badge">🚨 MOMENTUM DETECTADO</div>
+        <div class="mom-pct">+${pct}% <span>vs tu promedio</span></div>
+        <svg class="mom-spark" viewBox="0 0 ${W} ${H}" width="100%" height="44" preserveAspectRatio="none">
+          <polyline points="${poly}" />
+        </svg>
+      </div>
+    </div>`;
+}
+
+function renderMomentum() {
+  const box = $('#momentum-list');
+  if (!box) return;
+  if (!state.data.size) { box.innerHTML = ''; return; }
+  const list = momentumList();
+  const empty = $('#momentum-empty');
+  if (!list.length) {
+    box.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+  box.innerHTML = list.map(momentumHTML).join('');
+}
+
 function wwCardFor(analysis, used, { type, emoji, metric, threshold, numFn, rest, subFn }) {
   const best = analysis.cards
     .filter((c) => !used.has(c.v.id) && c[metric] >= threshold)
@@ -1192,7 +1293,7 @@ function bindEvents() {
   $('#btn-record-history').addEventListener('click', recordManualPoint);
   $('#btn-snapshot-history').addEventListener('click', recordManualPoint);
 
-  ['#videos-list', '#rank-podium', '#rank-videos'].forEach((sel) => {
+  ['#videos-list', '#rank-podium', '#rank-videos', '#momentum-list'].forEach((sel) => {
     $(sel).addEventListener('click', (e) => {
       const btn = e.target.closest('.score-mini');
       if (btn) openScoreModal(btn.dataset.scoreVideo);
