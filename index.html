@@ -117,7 +117,7 @@
           <div class="panel ideas-panel">
             <div class="panel-title">
               <h2>💡 Ideas para tu próximo video</h2>
-              <p class="muted small">Títulos y ángulos derivados de tus videos con mejor Viral Score, no de temas genéricos.</p>
+              <p class="muted small">Títulos y ángulos derivados de tus videos con mejor puntaje, no de temas genéricos.</p>
             </div>
             <button class="btn btn-primary" id="btn-ideas">Dame ideas basadas en lo que funciona</button>
             <div id="ideas-msg" class="msg"></div>
@@ -125,10 +125,9 @@
           </div>
           <div class="panel momentum-panel">
             <div class="panel-title">
-              <h2>🚨 MOMENTUM DETECTADO</h2>
-              <p class="muted small">Videos que están acelerando más rápido que tu promedio. Vigila estos ahora.</p>
-            </div>
-            <div id="momentum-empty" class="momentum-empty">
+<h2>🚀 Acelerando ahora</h2>
+              <p class="muted small">Videos que están creciendo más rápido que tu promedio. Vigila estos ahora.</p>
+              <div id="momentum-empty" class="momentum-empty">
               <p>🔍 Necesitas <strong>al menos 2 cargas de datos</strong> (pulsa ↻ y vuelve otro día o más tarde) para que el panel note cuál crece más rápido.</p>
             </div>
             <div id="momentum-list"></div>
@@ -136,7 +135,7 @@
           <div class="panel patterns-panel">
             <div class="panel-title">
               <h2>🧬 Patrones de tus videos</h2>
-              <p class="muted small">Qué comparten tus videos con mejor Viral Score: duración, hora de publicación, tema, formato e interacción.</p>
+              <p class="muted small">Qué comparten tus videos con mejor puntaje: duración, hora de publicación, tema, formato e interacción.</p>
             </div>
             <div id="patterns-empty" class="momentum-empty">
               <p>🧪 Necesitas <strong>al menos 3 videos por canal</strong> con datos cargados para que detectemos tus patrones ganadores.</p>
@@ -189,6 +188,7 @@
           <div class="view-head">
             <h1>Mis videos ganadores</h1>
             <span id="lbl-ranking" class="muted"></span>
+            <p class="muted small">Ordenados por <strong>Puntaje (0-100)</strong>: vistas frente a tu promedio + interacción + velocidad. Las posiciones 🥇🥈🥉 son las de mayor puntaje. Toca el botón de color de cada video para ver el desglose.</p>
           </div>
           <div class="rank-filters">
             <select id="rank-period" class="filter-select">
@@ -292,7 +292,7 @@
                 <input type="number" id="input-minviews" min="0" step="100" inputmode="numeric" />
               </label>
               <label class="field">
-                <span class="label">Viral Score mín.</span>
+                <span class="label">Puntaje mínimo</span>
                 <input type="number" id="input-minscore" min="0" max="100" step="5" inputmode="numeric" />
               </label>
             </div>
@@ -338,7 +338,7 @@
     <div class="modal-backdrop" id="score-backdrop"></div>
     <div class="modal-card" role="dialog" aria-live="polite">
       <div class="modal-head">
-        <h3>Viral Score</h3>
+        <h3>Puntaje del video</h3>
         <button class="modal-close" id="score-close" aria-label="Cerrar">✕</button>
       </div>
       <div id="score-body"></div>
@@ -353,7 +353,7 @@
         <button class="modal-close" id="alerts-close" aria-label="Cerrar">✕</button>
       </div>
       <div id="alerts-empty" class="momentum-empty hidden">
-        <p>🎉 Sin alertas por ahora. Cuando un video cruce el umbral de vistas o el Viral Score, aparecerá aquí.</p>
+        <p>🎉 Sin alertas por ahora. Cuando un video cruce el umbral de vistas o el puntaje mínimo, aparecerá aquí.</p>
       </div>
       <div id="alerts-list"></div>
       <div class="alerts-foot" id="alerts-foot">
@@ -363,6 +363,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>

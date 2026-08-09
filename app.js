@@ -335,8 +335,8 @@ function renderRanking() {
       </a>
       <div class="podium-title">${esc(it.v.title)}</div>
       <div class="podium-meta">${esc(it.bag.data.name)} · ${fmtCount(it.v.views)} vistas</div>
-      <button class="score-mini lv-${scoreLevel(it.score).cls}" data-score-video="${escAttr(it.v.id)}" title="Ver el Viral Score">
-        <span class="sm-icon">${scoreLevel(it.score).icon}</span><span class="sm-num">${it.score}</span><span class="sm-label">Viral</span>
+      <button class="score-mini lv-${scoreLevel(it.score).cls}" data-score-video="${escAttr(it.v.id)}" title="Ver el puntaje">
+        <span class="sm-icon">${scoreLevel(it.score).icon}</span><span class="sm-num">${it.score}</span><span class="sm-label">Puntaje</span>
       </button>
     </div>`).join('')}</div>`;
 
@@ -350,8 +350,8 @@ function renderRanking() {
           <div class="rv-meta">${esc(it.bag.data.name)} · ${fmtCount(it.v.views)} vistas</div>
         </div>
       </a>
-      <button class="score-mini lv-${scoreLevel(it.score).cls}" data-score-video="${escAttr(it.v.id)}" title="Ver el Viral Score">
-        <span class="sm-icon">${scoreLevel(it.score).icon}</span><span class="sm-num">${it.score}</span><span class="sm-label">Viral</span>
+      <button class="score-mini lv-${scoreLevel(it.score).cls}" data-score-video="${escAttr(it.v.id)}" title="Ver el puntaje">
+        <span class="sm-icon">${scoreLevel(it.score).icon}</span><span class="sm-num">${it.score}</span><span class="sm-label">Puntaje</span>
       </button>
     </div>`).join('');
 }
@@ -807,8 +807,8 @@ function videoCardHTML(v, bag) {
           ${v.desc ? `<div class="video-desc">${esc(v.desc)}</div>` : ''}
         </div>
       </a>
-      <button class="score-mini lv-${lv.cls}" data-score-video="${escAttr(v.id)}" title="Ver el Viral Score">
-        <span class="sm-icon">${lv.icon}</span><span class="sm-num">${score.total}</span><span class="sm-label">Viral</span>
+      <button class="score-mini lv-${lv.cls}" data-score-video="${escAttr(v.id)}" title="Ver el puntaje">
+        <span class="sm-icon">${lv.icon}</span><span class="sm-num">${score.total}</span><span class="sm-label">Puntaje</span>
       </button>
     </div>`;
 }
@@ -834,7 +834,7 @@ function scoreVideoHTML(v, bag) {
     </div>
     <div class="sbar-score">
       <span class="sbar-num">${score.total}</span>
-      <span class="sbar-label">Viral Score · ${lv.label}</span>
+      <span class="sbar-label">Puntaje · ${lv.label}</span>
     </div>
     <p class="sbar-how">Se calcula como el promedio ponderado de rendimiento (50), interacción (30) e impulso (20) contra el promedio de tu canal.</p>
     <div class="sbar-rows">${score.parts.map(rows).join('')}</div>
@@ -918,7 +918,7 @@ function alertItemHTML(a) {
   const score = scoreLevel(a.score || 0);
   const chip = a.type === 'views'
     ? `<span class="al-chip al-views">🔥 Más de <b>${fmtCount(a.value)}</b> vistas</span>`
-    : `<span class="al-chip al-score">💥 Viral Score <b>${a.value}</b></span>`;
+    : `<span class="al-chip al-score">💥 Puntaje <b>${a.value}</b></span>`;
   const date = new Date(a.at).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   return `
     <div class="alert-item">
@@ -926,8 +926,8 @@ function alertItemHTML(a) {
         <div class="al-top">${chip}<span class="al-date">${esc(date)}</span></div>
         <a class="alert-title" href="https://www.youtube.com/watch?v=${encodeURIComponent(a.videoId)}" target="_blank" rel="noopener">${esc(a.title)}</a>
         <div class="alert-meta">${esc(a.channel)}</div>
-        <button class="score-mini lv-${score.cls}" data-score-video="${escAttr(a.videoId)}" title="Ver el Viral Score">
-          <span class="sm-icon">${score.icon}</span><span class="sm-num">${a.score || 0}</span><span class="sm-label">Viral</span>
+        <button class="score-mini lv-${score.cls}" data-score-video="${escAttr(a.videoId)}" title="Ver el puntaje">
+          <span class="sm-icon">${score.icon}</span><span class="sm-num">${a.score || 0}</span><span class="sm-label">Puntaje</span>
         </button>
       </div>
       <button class="alert-dismiss" data-dismiss="${escAttr(a.key)}" aria-label="Descartar esta alerta" title="Descartar">✕</button>
@@ -1179,7 +1179,7 @@ function renderGoals() {
       const lv = goalLevel(p);
       rows.push(`
         <div class="goal-row">
-          <div class="goal-label">🎯 ${fmtCount(goal)} views / mes</div>
+          <div class="goal-label">🎯 ${fmtCount(goal)} vistas al mes</div>
           <div class="goal-current">Actual: ${mViews ? fmtFull.format(mViews) : '0'}</div>
           <div class="goal-bar"><i style="width:${Math.round(Math.min(1, p) * 100)}%"></i></div>
           <div class="goal-meta">
@@ -1412,7 +1412,7 @@ function ideaCards(set) {
     {
       tag: '🎯 Remix',
       title: bestTitle ? `Remix de tu video «${bestTitle}» con nuevo gancho al inicio` : `Remix de tu mejor video con un nuevo gancho al inicio`,
-      why: `Tus #1 por Viral Score. Mismo tema, otro ángulo.`,
+      why: `Tus #1 por puntaje. Mismo tema, otro ángulo.`,
     },
     {
       tag: '🔁 Secuela',
@@ -1598,9 +1598,9 @@ function computeViralScore(v, bag) {
 }
 
 function scoreLevel(total) {
-  if (total >= 85) return { cls: 'hot', icon: '🔥', label: 'En llamas' };
-  if (total >= 70) return { cls: 'good', icon: '🟢', label: 'Buen ritmo' };
-  return { cls: 'low', icon: '🔴', label: 'En desarrollo' };
+  if (total >= 75) return { cls: 'good', icon: '🟢', label: 'Bueno' };
+  if (total >= 50) return { cls: 'mid', icon: '🟠', label: 'Regular' };
+  return { cls: 'bad', icon: '🔴', label: 'En riesgo' };
 }
 
 function analyzeWhatsWorking(d, videos) {
@@ -1691,12 +1691,12 @@ function momentumHTML(m) {
       <div class="mom-main">
         <a class="mom-title" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}" target="_blank" rel="noopener">${esc(v.title)}</a>
         <div class="mom-meta">${esc(m.bag.data.name)} · ${fmtCount(v.views)} vistas</div>
-        <button class="score-mini lv-${lvCls}" data-score-video="${escAttr(v.id)}" title="Ver el Viral Score">
-          <span class="sm-icon">${scoreLevel(score).icon}</span><span class="sm-num">${score}</span><span class="sm-label">Viral</span>
+        <button class="score-mini lv-${lvCls}" data-score-video="${escAttr(v.id)}" title="Ver el puntaje">
+          <span class="sm-icon">${scoreLevel(score).icon}</span><span class="sm-num">${score}</span><span class="sm-label">Puntaje</span>
         </button>
       </div>
       <div class="mom-right">
-        <div class="mom-badge">🚨 MOMENTUM DETECTADO</div>
+        <div class="mom-badge">🚀 Acelerando ahora</div>
         <div class="mom-pct">+${pct}% <span>vs tu promedio</span></div>
         <svg class="mom-spark" viewBox="0 0 ${W} ${H}" width="100%" height="44" preserveAspectRatio="none">
           <polyline points="${poly}" />
@@ -1830,7 +1830,7 @@ function patRowsHTML(p) {
     : 'Mixto entre Shorts y largos';
   const rows = [
     patRow('⏱️', 'Duración', fmtDurRange(p.durLo, p.durHi),
-      `Rango típico entre los ${p.n} mejores por Viral Score`),
+      `Rango típico entre los ${p.n} mejores por puntaje`),
     patRow('🕐', 'Publicación', p.binCount >= 2 ? fmtHourWindow(p.bestBin) : 'Variado',
       p.binCount >= 2
         ? `Ventana de 2 h que se repite en ${p.binCount} de ${p.n} videos`
@@ -2219,14 +2219,14 @@ function renderChannelList() {
         <div class="ch-name">${esc(c.name)}<span class="ch-handle">${esc(c.handle || c.id)}</span></div>
         <div class="ch-goals">
           <label class="ch-goal">
-            <span>🎯 Subs meta</span>
+            <span>🎯 Meta de suscriptores</span>
             <input class="ch-goal-input" type="number" data-id="${escAttr(c.id)}" data-metric="subs"
-                   min="0" step="1000" placeholder="0" value="${g.subs || ''}" inputmode="numeric" />
+                   min="0" step="1000" placeholder="Ej. 10000" value="${g.subs || ''}" inputmode="numeric" />
           </label>
           <label class="ch-goal">
-            <span>🎯 Views/mes meta</span>
+            <span>🎯 Vistas al mes (meta)</span>
             <input class="ch-goal-input" type="number" data-id="${escAttr(c.id)}" data-metric="viewsM"
-                   min="0" step="1000" placeholder="0" value="${g.viewsM || ''}" inputmode="numeric" />
+                   min="0" step="1000" placeholder="Ej. 500000" value="${g.viewsM || ''}" inputmode="numeric" />
           </label>
         </div>
       </div>

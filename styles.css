@@ -953,12 +953,12 @@ button { -webkit-tap-highlight-color: transparent; }
 .score-mini .sm-icon { font-size: 14px; }
 .score-mini .sm-num { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .score-mini .sm-label { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-.score-mini.lv-hot { border-color: rgba(255, 45, 85, 0.5); background: rgba(255, 45, 85, 0.12); }
-.score-mini.lv-hot .sm-num { color: var(--primary); }
 .score-mini.lv-good { border-color: rgba(52, 211, 153, 0.5); background: rgba(52, 211, 153, 0.1); }
 .score-mini.lv-good .sm-num { color: var(--success); }
-.score-mini.lv-low { border-color: rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.08); }
-.score-mini.lv-low .sm-num { color: var(--warning); }
+.score-mini.lv-mid { border-color: rgba(251, 191, 36, 0.5); background: rgba(251, 191, 36, 0.1); }
+.score-mini.lv-mid .sm-num { color: var(--warning); }
+.score-mini.lv-bad { border-color: rgba(248, 113, 113, 0.55); background: rgba(248, 113, 113, 0.1); }
+.score-mini.lv-bad .sm-num { color: var(--danger); }
 
 /* ============ Modal del Viral Score ============ */
 .modal {
