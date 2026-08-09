@@ -541,7 +541,8 @@ function renderSummary() {
   const sel = $('#channel-filter');
   const filter = sel.value;
   const bagList = filter === 'all'
-    ? [...state.data.values()]
+    ? [...state.data.values()].sort((a, b) =>
+        b.data.views - a.data.views || b.data.subs - a.data.subs)
     : (state.data.has(filter) ? [state.data.get(filter)] : []);
 
   for (const bag of bagList) {
