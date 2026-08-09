@@ -396,6 +396,7 @@ async function loadStats() {
 function renderAll() {
   renderFilterOptions();
   renderSummary();
+  renderWhatsWorking();
   renderComparison();
   renderRank();
   renderVideos();
@@ -574,34 +575,273 @@ function renderVideos() {
         <img class="avatar" src="${d.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer" />
         <h3>${esc(d.name)}</h3>
       </div>
-      ${videos.length ? videos.map(videoCardHTML).join('') : '<p class="muted">Sin datos de videos.</p>'}`;
+      ${videos.length ? videos.map((v) => videoCardHTML(v, bag)).join('') : '<p class="muted">Sin datos de videos.</p>'}`;
     box.appendChild(block);
   }
   const n = state.data.size;
   $('#lbl-videos-info').textContent = `${total} videos · ${n} canal${n > 1 ? 'es' : ''}`;
 }
 
-function videoCardHTML(v) {
+function videoCardHTML(v, bag) {
   const short = String(v.categoryId) === '42';
+  const score = computeViralScore(v, bag);
+  const lv = scoreLevel(score.total);
   return `
-    <a class="video-card" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}" target="_blank" rel="noopener">
-      <div class="video-thumb-wrap">
-        <img class="video-thumb" src="${escAttr(v.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
-        <span class="video-thumb-duration">${esc(v.duration)}</span>
-      </div>
-      <div class="video-body">
-        <div class="video-title">${esc(v.title)}${short ? '<span class="video-shorts-badge">#Shorts</span>' : ''}</div>
-        <div class="video-date">${fmtDateTime(v.published)} · ${timeAgo(v.published)}</div>
-        <div class="video-hour">🕐 Publicado a las ${esc(fmtTime(v.published))}</div>
-        <div class="video-stats">
-          <span class="video-stat">👁 <b>${fmtCount(v.views)}</b></span>
-          <span class="video-stat">👍 <b>${fmtCount(v.likes)}</b></span>
-          <span class="video-stat">💬 <b>${fmtCount(v.comments)}</b></span>
-          <span class="video-stat">${esc(categoryName(v.categoryId))}</span>
+    <div class="video-card">
+      <a class="video-card-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}" target="_blank" rel="noopener">
+        <div class="video-thumb-wrap">
+          <img class="video-thumb" src="${escAttr(v.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <span class="video-thumb-duration">${esc(v.duration)}</span>
         </div>
-        ${v.desc ? `<div class="video-desc">${esc(v.desc)}</div>` : ''}
+        <div class="video-body">
+          <div class="video-title">${esc(v.title)}${short ? '<span class="video-shorts-badge">#Shorts</span>' : ''}</div>
+          <div class="video-date">${fmtDateTime(v.published)} · ${timeAgo(v.published)}</div>
+          <div class="video-hour">🕐 Publicado a las ${esc(fmtTime(v.published))}</div>
+          <div class="video-stats">
+            <span class="video-stat">👁 <b>${fmtCount(v.views)}</b></span>
+            <span class="video-stat">👍 <b>${fmtCount(v.likes)}</b></span>
+            <span class="video-stat">💬 <b>${fmtCount(v.comments)}</b></span>
+            <span class="video-stat">${esc(categoryName(v.categoryId))}</span>
+          </div>
+          ${v.desc ? `<div class="video-desc">${esc(v.desc)}</div>` : ''}
+        </div>
+      </a>
+      <button class="score-mini lv-${lv.cls}" data-score-video="${escAttr(v.id)}" title="Ver el Viral Score">
+        <span class="sm-icon">${lv.icon}</span><span class="sm-num">${score.total}</span><span class="sm-label">Viral</span>
+      </button>
+    </div>`;
+}
+
+/* Explicación del Viral Score de un video (se abre en un modal) */
+function scoreVideoHTML(v, bag) {
+  const score = computeViralScore(v, bag);
+  const lv = scoreLevel(score.total);
+  const engPct = v.views > 0 ? ((v.likes + v.comments) / v.views) * 100 : 0;
+  const rows = (p) => `
+      <div class="pb-row">
+        <div class="pb-head"><span>${p.label}</span><b>${p.points}/${p.max}</b></div>
+        <div class="pb-track"><div class="pb-fill" style="width:${Math.round(p.frac * 100)}%"></div></div>
+        <p class="pb-detail">${p.detail}</p>
+      </div>`;
+  return `
+    <div class="sbar-head">
+      <div class="sbar-big ${lv.cls}">${lv.icon}</div>
+      <div>
+        <div class="sbar-title">${esc(v.title)}</div>
+        <div class="sbar-meta">${esc(bag.data.name)}</div>
       </div>
+    </div>
+    <div class="sbar-score">
+      <span class="sbar-num">${score.total}</span>
+      <span class="sbar-label">Viral Score · ${lv.label}</span>
+    </div>
+    <p class="sbar-how">Se calcula como el promedio ponderado de rendimiento (50), interacción (30) e impulso (20) contra el promedio de tu canal.</p>
+    <div class="sbar-rows">${score.parts.map(rows).join('')}</div>
+    <div class="sbar-raw">
+      <span>👁 <b>${fmtCount(v.views)}</b> vistas</span>
+      <span>💬 <b>${engPct.toFixed(1)}%</b> interacción (likes + comentarios)</span>
+    </div>`;
+}
+
+/* ---------- Modal del Viral Score ---------- */
+function openScoreModal(videoId) {
+  for (const [, bag] of state.data) {
+    const v = (bag.videos || []).find((x) => x.id === videoId);
+    if (!v) continue;
+    $('#score-body').innerHTML = scoreVideoHTML(v, bag);
+    $('#score-modal').classList.remove('hidden');
+    $('#score-modal').setAttribute('aria-hidden', 'false');
+    return;
+  }
+  showToast('No se encontró el video en los datos cargados.', 'error');
+}
+
+function closeScoreModal() {
+  $('#score-modal').classList.add('hidden');
+  $('#score-modal').setAttribute('aria-hidden', 'true');
+}
+
+/* ============================================================
+   "Lo que está funcionando": compara videos recientes contra
+   el promedio del canal y muestra la mejor señal de cada tipo
+   ============================================================ */
+function durSeconds(str) {
+  if (!str) return 0;
+  const p = str.split(':').map(Number);
+  if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
+  if (p.length === 2) return p[0] * 60 + p[1];
+  return Number(p[0]) || 0;
+}
+function fmtDurSec(s) {
+  if (!s) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.round(s % 60);
+  const p = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${p(m)}:${p(sec)}` : `${m}:${p(sec)}`;
+}
+function mostCommonCat(arr) {
+  const m = {};
+  for (const x of arr) if (x) m[x] = (m[x] || 0) + 1;
+  let best = '', n = 0;
+  for (const k in m) if (m[k] > n) { n = m[k]; best = k; }
+  return best;
+}
+const pct = (x) => `${(x * 100).toFixed(1)}%`;
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+/* ---------- Viral Score 0-100 ----------
+   Rendimiento (50) + Interacción (30) + Impulso (20) */
+function computeViralScore(v, bag) {
+  const d = bag.data;
+  const recent = bag.videos || [];
+  const n = recent.length;
+  const sum = (f) => recent.reduce((a, x) => a + (f(x) || 0), 0);
+  const avgViews = d.videos > 0 ? d.views / d.videos : (n ? sum((x) => x.views) / n : 0);
+  const avgEng = n ? sum((x) => (x.views ? (x.likes + x.comments) / x.views : 0)) / n : 0;
+  const daysChannel = Math.max((Date.now() - new Date(d.published)) / 86400000, 1);
+  const avgDaily = d.views / daysChannel;
+
+  const days = Math.max((Date.now() - new Date(v.published)) / 86400000, 1);
+  const views = Number(v.views) || 0;
+  const engRate = views > 0 ? (Number(v.likes || 0) + Number(v.comments || 0)) / views : 0;
+  const daily = views / days;
+
+  const parts = [
+    {
+      key: 'views', label: 'Rendimiento', max: 50,
+      frac: avgViews > 0 ? clamp01((views / avgViews) / 2.5) : 0,
+      detail: avgViews > 0
+        ? `${fmtCount(views)} vistas vs ${fmtCount(Math.round(avgViews))} promedio por video (${(views / avgViews).toFixed(2)}X)`
+        : `${fmtCount(views)} vistas sin promedio de referencia aún`,
+    },
+    {
+      key: 'eng', label: 'Interacción', max: 30,
+      frac: avgEng > 0 ? clamp01((engRate / avgEng) / 1.2) : (engRate > 0 ? 0.4 : 0),
+      detail: avgEng > 0
+        ? `${pct(engRate)} (likes+comentarios)/vistas vs ${pct(avgEng)} de tu promedio`
+        : `${pct(engRate)} de interacción (likes + comentarios)`,
+    },
+    {
+      key: 'vel', label: 'Impulso', max: 20,
+      frac: avgDaily > 0 ? clamp01((daily / avgDaily) / 1.2) : 0,
+      detail: avgDaily > 0
+        ? `~${fmtCount(Math.round(daily))} vistas/día vs ${fmtCount(Math.round(avgDaily))} del promedio del canal`
+        : '—',
+    },
+  ];
+
+  let total = 0;
+  parts.forEach((p) => { p.points = Math.round(p.frac * p.max); total += p.points; });
+  return { total, parts };
+}
+
+function scoreLevel(total) {
+  if (total >= 85) return { cls: 'hot', icon: '🔥', label: 'En llamas' };
+  if (total >= 70) return { cls: 'good', icon: '🟢', label: 'Buen ritmo' };
+  return { cls: 'low', icon: '🔴', label: 'En desarrollo' };
+}
+
+function analyzeWhatsWorking(d, videos) {
+  const n = videos.length;
+  if (!n) return null;
+  const sum = (f) => videos.reduce((a, v) => a + (f(v) || 0), 0);
+  const avgViews = d.videos > 0 ? d.views / d.videos : sum((v) => v.views) / n;
+  const avgEng = sum((v) => (v.views ? (v.likes + v.comments) / v.views : 0)) / n;
+  const avgCmt = sum((v) => (v.views ? v.comments / v.views : 0)) / n;
+  const avgLike = sum((v) => (v.views ? v.likes / v.views : 0)) / n;
+  const avgDur = sum((v) => durSeconds(v.duration)) / n;
+  const daysChannel = Math.max((Date.now() - new Date(d.published)) / 86400000, 1);
+  const avgDaily = d.views / daysChannel;
+  const dominantCat = mostCommonCat(videos.map((v) => v.categoryId));
+
+  const cards = videos.map((v) => {
+    const days = Math.max((Date.now() - new Date(v.published)) / 86400000, 1);
+    const viewsRatio = avgViews > 0 ? v.views / avgViews : 0;
+    const daily = v.views / days;
+    const dailyRatio = avgDaily > 0 ? daily / avgDaily : 0;
+    const cmt = v.views ? v.comments / v.views : 0;
+    const like = v.views ? v.likes / v.views : 0;
+    const eng = v.views ? (v.likes + v.comments) / v.views : 0;
+    const interRatio = avgCmt > 0 ? cmt / avgCmt : (avgEng > 0 ? eng / avgEng : 0);
+
+    const signals = [];
+    if (avgCmt > 0 && cmt >= avgCmt * 1.15) signals.push(`💬 ${pct(cmt)} de comentarios vs ${pct(avgCmt)} de promedio`);
+    if (avgLike > 0 && like >= avgLike * 1.15) signals.push(`👍 ${pct(like)} de likes vs ${pct(avgLike)} de promedio`);
+    if (avgEng > 0 && eng >= avgEng * 1.1) signals.push(`🔥 Mayor interacción (${pct(eng)} vs ${pct(avgEng)} promedio)`);
+    const dur = durSeconds(v.duration);
+    if (avgDur > 0 && dur > 0) signals.push(`⏱ Duración ${fmtDurSec(dur)} vs promedio ${fmtDurSec(avgDur)}`);
+    if (v.categoryId && v.categoryId !== dominantCat) signals.push(`📂 Categoría: ${categoryName(v.categoryId)}`);
+
+    return { v, viewsRatio, daily, dailyRatio, cmt, like, eng, interRatio, signals, short: String(v.categoryId) === '42' };
+  });
+
+  return { avgViews, avgEng, avgCmt, avgDur, avgDaily, cards };
+}
+
+function wwCardFor(analysis, used, { type, emoji, metric, threshold, numFn, rest, subFn }) {
+  const best = analysis.cards
+    .filter((c) => !used.has(c.v.id) && c[metric] >= threshold)
+    .sort((a, b) => b[metric] - a[metric])[0] || null;
+  if (!best) return null;
+  used.add(best.v.id);
+  const why = best.signals.length
+    ? `<span>¿Por qué?</span>` + best.signals.slice(0, 3).map((s) => `<span class="ww-chip">${s}</span>`).join('')
+    : `<span>¿Por qué?</span><span class="ww-chip">Llegó a más público que tu promedio</span>`;
+  return `
+    <a class="ww-card ${type}" href="https://www.youtube.com/watch?v=${encodeURIComponent(best.v.id)}" target="_blank" rel="noopener">
+      <div class="ww-metric"><span class="ww-emoji">${emoji}</span><b>${numFn(best)}</b><span>${esc(rest)}</span></div>
+      <div class="ww-title">${esc(best.v.title)}${best.short ? '<span class="video-shorts-badge">#Shorts</span>' : ''}</div>
+      <div class="ww-why">${why}</div>
+      <div class="ww-sub">${esc(subFn(best))}</div>
     </a>`;
+}
+
+function renderWhatsWorking() {
+  const box = $('#ww-cards');
+  if (!state.data.size) { box.innerHTML = ''; return; }
+  const filter = $('#channel-filter').value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+  box.innerHTML = '';
+  for (const bag of bagList) {
+    const d = bag.data;
+    const analysis = analyzeWhatsWorking(d, bag.videos || []);
+    if (!analysis) continue;
+    const used = new Set();
+    const html = [
+      wwCardFor(analysis, used, {
+        type: 'views', emoji: '🔥', metric: 'viewsRatio', threshold: 1.15,
+        numFn: (c) => `${c.viewsRatio.toFixed(1)}X`,
+        rest: 'mejor que tu promedio',
+        subFn: () => `Rendimiento vs ${fmtCount(Math.round(analysis.avgViews))} vistas por video de promedio`,
+      }),
+      wwCardFor(analysis, used, {
+        type: 'momentum', emoji: '⚡', metric: 'dailyRatio', threshold: 1.15,
+        numFn: (c) => `${c.dailyRatio.toFixed(1)}X`,
+        rest: 'el ritmo diario de tu canal',
+        subFn: (c) => `Suma ~${fmtCount(Math.round(c.daily))} vistas/día vs ${fmtCount(Math.round(analysis.avgDaily))} del promedio`,
+      }),
+      wwCardFor(analysis, used, {
+        type: 'interaction', emoji: '💬', metric: 'interRatio', threshold: 1.15,
+        numFn: (c) => `${c.interRatio.toFixed(1)}X`,
+        rest: 'más activa tu comunidad',
+        subFn: (c) => analysis.avgCmt > 0
+          ? `${pct(c.cmt)} de comentarios vs ${pct(analysis.avgCmt)} de promedio`
+          : `${pct(c.eng)} de interacción vs ${pct(analysis.avgEng)} de promedio`,
+      }),
+    ].filter(Boolean).join('');
+
+    box.insertAdjacentHTML('beforeend', `
+      <div class="ww-channel">
+        <div class="ww-channel-head">
+          <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <h3>${esc(d.name)}</h3>
+        </div>
+        <div class="ww-grid">${html || '<p class="ww-empty">Aún no hay señales claras sobre tu promedio. Publica más videos y vuelve a cargar.</p>'}</div>
+      </div>`);
+  }
 }
 
 /* Histograma: cuántos videos publica cada canal a cada hora del día */
@@ -862,7 +1102,7 @@ function bindEvents() {
   $$('[data-action]').forEach((b) => b.addEventListener('click', openSettings));
   $('#btn-settings').addEventListener('click', openSettings);
 
-  $('#channel-filter').addEventListener('change', renderSummary);
+  $('#channel-filter').addEventListener('change', () => { renderSummary(); renderWhatsWorking(); });
 
   $('#btn-save-key').addEventListener('click', saveKey);
   $('#btn-test-key').addEventListener('click', testKey);
@@ -877,6 +1117,16 @@ function bindEvents() {
 
   $('#btn-record-history').addEventListener('click', recordManualPoint);
   $('#btn-snapshot-history').addEventListener('click', recordManualPoint);
+
+  $('#videos-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('.score-mini');
+    if (btn) openScoreModal(btn.dataset.scoreVideo);
+  });
+  $('#score-close').addEventListener('click', closeScoreModal);
+  $('#score-backdrop').addEventListener('click', closeScoreModal);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#score-modal').classList.contains('hidden')) closeScoreModal();
+  });
 
   $('#btn-reset').addEventListener('click', () => {
     if (!confirm('¿Borrar todos los datos guardados (API key, canales e historial)?')) return;

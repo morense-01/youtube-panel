@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=10" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -75,6 +75,13 @@
             </select>
           </div>
           <div id="summary-cards" class="cards-grid"></div>
+          <div class="panel ww-section">
+            <div class="panel-title">
+              <h2>🔥 Lo que está funcionando</h2>
+              <p class="muted small">Tus videos recientes comparados contra el promedio de tu canal.</p>
+            </div>
+            <div id="ww-cards"></div>
+          </div>
           <div class="panel">
             <div class="panel-title">
               <h2>Comparación entre canales</h2>
@@ -207,7 +214,18 @@
 
   <div id="toast" class="toast hidden"></div>
 
+  <div id="score-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="score-backdrop"></div>
+    <div class="modal-card" role="dialog" aria-live="polite">
+      <div class="modal-head">
+        <h3>Viral Score</h3>
+        <button class="modal-close" id="score-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="score-body"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
