@@ -689,6 +689,76 @@ button { -webkit-tap-highlight-color: transparent; }
 .idea-why { font-size: 11.5px; color: var(--text-muted); }
 .btn-copy { align-self: flex-start; margin-top: 2px; }
 
+/* ============ Mejor horario ============ */
+#hour-rank { display: flex; flex-direction: column; gap: 12px; }
+.hour-best {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.hour-best-time {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.hour-best-chip {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 11px;
+  border-radius: 99px;
+}
+.hour-best-sub { font-size: 11.5px; color: var(--text-muted); margin: 0; }
+.hour-list { display: flex; flex-direction: column; gap: 6px; }
+.hour-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 12.5px;
+}
+.hour-time { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 62px; }
+.hour-meter {
+  height: 6px;
+  background: var(--surface);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.hour-meter i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(100deg, var(--primary-2), var(--primary) 55%, var(--accent));
+  border-radius: 99px;
+}
+.hour-level { font-weight: 700; font-size: 12px; white-space: nowrap; }
+.hour-extra { font-size: 11px; color: var(--text-muted); grid-column: 3; text-align: right; }
+.hour-level.great { color: var(--primary); }
+.hour-level.good { color: var(--success); }
+.hour-level.mid { color: var(--warning); }
+.hour-level.bad { color: var(--danger); }
+.hour-best.great .hour-best-chip,
+.hour-best.great .hour-best-time { color: var(--primary); }
+.hour-best.good .hour-best-chip,
+.hour-best.good .hour-best-time { color: var(--success); }
+.hour-best.mid .hour-best-chip,
+.hour-best.mid .hour-best-time { color: var(--warning); }
+.hour-best.bad .hour-best-chip,
+.hour-best.bad .hour-best-time { color: var(--danger); }
+.hour-best-chip.great { background: rgba(255, 45, 85, 0.12); }
+.hour-best-chip.good { background: rgba(52, 211, 153, 0.12); }
+.hour-best-chip.mid { background: rgba(251, 191, 36, 0.12); }
+.hour-best-chip.bad { background: rgba(248, 113, 113, 0.12); }
+
 /* ============ Videos ============ */
 .channel-block { margin-bottom: 22px; }
 .channel-block-head {

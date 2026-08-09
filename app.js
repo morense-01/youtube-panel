@@ -664,6 +664,7 @@ function renderRank() {
 /* --- Videos --- */
 function renderVideos() {
   updateHourChart();
+  renderHourRank();
   const box = $('#videos-list');
   if (!state.data.size) { box.innerHTML = ''; return; }
   let total = 0;
@@ -1304,14 +1305,15 @@ function fmtDurRange(lo, hi) {
   return hi <= lo + 1 ? f(lo) : `${f(lo)} – ${f(hi)}`;
 }
 
+function fmtHourOfDay(x) {
+  const hh = x % 24;
+  const period = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  return `${h12}:00 ${period}`;
+}
+
 function fmtHourWindow(h) {
-  const f = (x) => {
-    const hh = x % 24;
-    const period = hh >= 12 ? 'PM' : 'AM';
-    const h12 = hh % 12 || 12;
-    return `${h12}:00 ${period}`;
-  };
-  return `${f(h)} – ${f(h + 2)}`;
+  return `${fmtHourOfDay(h)} – ${fmtHourOfDay(h + 2)}`;
 }
 
 function computePatterns(bag) {
@@ -1545,6 +1547,94 @@ function updateHourChart() {
       },
     },
   });
+}
+
+/* Mejor horario de publicación: calcula la calidad de cada hora
+   con los propios videos (views relativas al promedio + interacción),
+   sin recurrir a estadísticas generales de internet. */
+function hourRanking() {
+  const filter = $('#channel-filter').value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+  const byHour = {};
+  let videosSum = 0;
+  let engSum = 0;
+  let engN = 0;
+  for (const bag of bagList) {
+    const d = bag.data;
+    const videos = bag.videos || [];
+    if (!videos.length) continue;
+    const sum = (f) => videos.reduce((a, v) => a + (f(v) || 0), 0);
+    const avgViews = d.videos > 0 ? d.views / d.videos : sum((v) => v.views) / videos.length;
+    for (const v of videos) {
+      const h = new Date(v.published).getHours();
+      const ratio = avgViews > 0 ? (Number(v.views) || 0) / avgViews : 0;
+      const eng = (Number(v.views) || 0) > 0
+        ? (Number(v.likes || 0) + Number(v.comments || 0)) / (Number(v.views) || 0)
+        : 0;
+      (byHour[h] ??= { ratios: [], eng: [], n: 0 });
+      byHour[h].ratios.push(ratio);
+      byHour[h].eng.push(eng);
+      byHour[h].n++;
+      videosSum++;
+      engSum += eng;
+      if (eng > 0) engN++;
+    }
+  }
+  const avgEng = engSum > 0 ? engSum / videosSum : 0;
+  const rows = Object.entries(byHour)
+    .map(([h, o]) => {
+      const s = o.ratios.slice().sort((a, b) => a - b);
+      const medRatio = quantile(s, 0.5);
+      const medEng = o.eng.slice().sort((a, b) => a - b);
+      const eng = o.eng.reduce((a, b) => a + b, 0) / o.n;
+      const perf = clamp01(medRatio / 1.8) * 70;
+      const inter = avgEng > 0 ? clamp01(eng / (avgEng * 1.2)) * 30 : 0;
+      let score = perf + inter;
+      score = score * (o.n / (o.n + 2)) + 50 * (2 / (o.n + 2)); // castiga muestras mínimas
+      return { h: Number(h), n: o.n, mean: medRatio, eng, score: Math.round(score) };
+    })
+    .sort((a, b) => b.score - a.score || b.n - a.n)
+    .slice(0, 8);
+  return { rows, total: videosSum, avgEng };
+}
+
+function hourLevel(score) {
+  if (score >= 75) return { icon: '🔥', label: 'Excelente', cls: 'great' };
+  if (score >= 60) return { icon: '🟢', label: 'Bueno', cls: 'good' };
+  if (score >= 45) return { icon: '🟡', label: 'Normal', cls: 'mid' };
+  return { icon: '🔴', label: 'Evitar', cls: 'bad' };
+}
+
+function renderHourRank() {
+  const box = $('#hour-rank');
+  if (!box || !state.data.size) return;
+  const { rows, total, avgEng } = hourRanking();
+  if (!rows.length) {
+    box.innerHTML = '<p class="muted small">Publica videos y vuelve a cargar datos (↻) para calcular tu mejor horario.</p>';
+    return;
+  }
+  const best = rows[0];
+  const bl = hourLevel(best.score);
+  box.innerHTML = `
+    <div class="hour-best ${bl.cls}">
+      <div class="hour-best-time">${fmtHourOfDay(best.h)}</div>
+      <div class="hour-best-chip ${bl.cls}">${bl.icon} ${bl.label}</div>
+      <p class="hour-best-sub">Mejor momento según tus ${total} videos propios${avgEng ? ` · ${pct(avgEng)} de interacción media` : ''}.</p>
+    </div>
+    <div class="hour-list">
+      ${rows.map((r) => {
+        const lv = hourLevel(r.score);
+        return `
+          <div class="hour-row">
+            <span class="hour-time">${fmtHourOfDay(r.h)}</span>
+            <span class="hour-meter"><i style="width:${Math.min(100, r.score)}%"></i></span>
+            <span class="hour-level ${lv.cls}">${lv.icon} ${lv.label}</span>
+            <span class="hour-extra">${r.n} vid.${avgEng ? ` · ${pct(r.eng)}` : ''}</span>
+          </div>`;
+      }).join('')}
+    </div>`;
 }
 
 /* --- Historial / evolución --- */

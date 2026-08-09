@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -139,6 +139,13 @@
             <div class="chart-wrap">
               <canvas id="chart-hour-dist"></canvas>
             </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              <h2>🕐 Mejor momento para publicar</h2>
+              <p class="muted small">Ranking según tus propios videos (views frente a tu promedio + interacción), no de consejos genéricos.</p>
+            </div>
+            <div id="hour-rank"></div>
           </div>
           <div id="videos-list"></div>
         </div>
@@ -321,6 +328,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
