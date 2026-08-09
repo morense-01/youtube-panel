@@ -21,6 +21,7 @@ const KEYS = {
   alertCfg: 'ytPanel.alertCfg',
   alertLog: 'ytPanel.alertLog',
   alertDismissed: 'ytPanel.alertDismissed',
+  goals: 'ytPanel.goals',
 };
 
 /* ---------- Utilidades ---------- */
@@ -109,7 +110,11 @@ let alertCfg = Object.assign({}, ALERT_DEFAULTS, store.get(KEYS.alertCfg, {}));
 let alertLog = store.get(KEYS.alertLog, []) || [];
 let alertDismissed = store.get(KEYS.alertDismissed, []) || [];
 
+/* Metas por canal: { [channelId]: { subs: number, viewsM: number } } */
+let goals = store.get(KEYS.goals, {}) || {};
+
 function persistChannels() { store.set(KEYS.channels, channels); }
+function persistGoals() { store.set(KEYS.goals, goals); }
 
 /* ---------- Estado de la UI ---------- */
 const state = {
@@ -501,6 +506,7 @@ function renderAll() {
   renderComparison();
   renderChannelRanks();
   renderPersonalAlerts();
+  renderGoals();
   renderRank();
   renderVideos();
   renderRanking();
@@ -1082,6 +1088,114 @@ function renderPersonalAlerts() {
       <span class="pers-text">${esc(a.text)}</span>
       ${a.video ? `<a class="pers-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(a.video)}" target="_blank" rel="noopener">Ver →</a>` : ''}
     </div>`).join('');
+}
+
+/* ============================================================
+   🎯 Objetivos: metas de suscriptores y de views/mes por canal.
+   Configurables en Ajustes -> Mis canales.
+   ============================================================ */
+
+/* Views de los últimos ~30 días: prioriza la resta real del
+   historial y, si aún no alcanza, estima sumando los videos
+   (largos + Shorts) publicados en los últimos 30 días. */
+function monthlyViews(bag) {
+  const now = Date.now();
+  const hist = store.get(KEYS.history, []);
+  const step = 30 * 86400000;
+  let ref = null;
+  for (const h of hist) {
+    const t = new Date(h.date).getTime();
+    if (!Number.isFinite(t) || now - t > step) continue;
+    const v = h.points?.[bag.data.id]?.v;
+    if (typeof v !== 'number') continue;
+    if (!ref || (now - t) < ref.age) ref = { v, age: now - t };
+  }
+  if (ref) {
+    const diff = bag.data.views - ref.v;
+    if (diff > 0) return diff;
+  }
+  const cutoff = now - step;
+  return (bag.videos || []).reduce((a, v) => {
+    const p = new Date(v.published).getTime();
+    return Number.isFinite(p) && p >= cutoff ? a + (Number(v.views) || 0) : a;
+  }, 0);
+}
+
+function goalLevel(p) {
+  if (p >= 1) return { icon: '🎉', label: 'Meta', cls: 'done' };
+  if (p >= 0.7) return { icon: '🟢', label: 'Cerca', cls: 'good' };
+  if (p >= 0.4) return { icon: '🟡', label: 'En camino', cls: 'mid' };
+  return { icon: '🔴', label: 'Lejos', cls: 'far' };
+}
+
+function renderGoals() {
+  const box = $('#goals');
+  const empty = $('#goals-empty');
+  if (!box) return;
+  if (!state.data.size) { box.innerHTML = ''; return; }
+
+  const filter = $('#channel-filter').value;
+  const bagList = filter === 'all'
+    ? [...state.data.values()]
+    : (state.data.has(filter) ? [state.data.get(filter)] : []);
+
+  const entries = bagList
+    .map((bag) => ({ bag, g: goals[bag.data.id] || {} }))
+    .filter((e) => Number(e.g.subs) > 0 || Number(e.g.viewsM) > 0);
+
+  if (!entries.length) {
+    box.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  box.innerHTML = entries.map(({ bag, g }) => {
+    const d = bag.data;
+    const rows = [];
+
+    if (Number(g.subs) > 0) {
+      const goal = Number(g.subs);
+      const p = clamp01(d.subs / goal);
+      const lv = goalLevel(p);
+      rows.push(`
+        <div class="goal-row">
+          <div class="goal-label">🎯 ${fmtCount(goal)} suscriptores</div>
+          <div class="goal-current">Actual: ${fmtFull.format(d.subs)}</div>
+          <div class="goal-bar"><i style="width:${Math.round(Math.min(1, p) * 100)}%"></i></div>
+          <div class="goal-meta">
+            <span class="goal-pct ${lv.cls}">${(p * 100).toFixed(1)}%</span>
+            <span class="goal-level ${lv.cls}">${lv.icon} ${lv.label}</span>
+          </div>
+        </div>`);
+    }
+
+    const mViews = monthlyViews(bag);
+    if (Number(g.viewsM) > 0) {
+      const goal = Number(g.viewsM);
+      const p = clamp01(mViews / goal);
+      const lv = goalLevel(p);
+      rows.push(`
+        <div class="goal-row">
+          <div class="goal-label">🎯 ${fmtCount(goal)} views / mes</div>
+          <div class="goal-current">Actual: ${mViews ? fmtFull.format(mViews) : '0'}</div>
+          <div class="goal-bar"><i style="width:${Math.round(Math.min(1, p) * 100)}%"></i></div>
+          <div class="goal-meta">
+            <span class="goal-pct ${lv.cls}">${(p * 100).toFixed(1)}%</span>
+            <span class="goal-level ${lv.cls}">${lv.icon} ${lv.label}</span>
+          </div>
+        </div>`);
+    }
+
+    return `
+      <div class="goal-chan">
+        <div class="goal-chan-head">
+          <img class="avatar" src="${escAttr(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="goal-chan-name">Canal: ${esc(d.name)}</div>
+        </div>
+        ${rows.join('')}
+      </div>`;
+  }).join('');
 }
 
 /* ============================================================
@@ -1945,21 +2059,51 @@ function renderChannelList() {
   for (const c of channels) {
     const el = document.createElement('div');
     el.className = 'ch-item';
+    const g = goals[c.id] || { subs: 0, viewsM: 0 };
     el.innerHTML = `
       <img class="avatar" src="${escAttr(c.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
-      <div class="ch-name">${esc(c.name)}<span class="ch-handle">${esc(c.handle || c.id)}</span></div>
+      <div class="ch-main">
+        <div class="ch-name">${esc(c.name)}<span class="ch-handle">${esc(c.handle || c.id)}</span></div>
+        <div class="ch-goals">
+          <label class="ch-goal">
+            <span>🎯 Subs meta</span>
+            <input class="ch-goal-input" type="number" data-id="${escAttr(c.id)}" data-metric="subs"
+                   min="0" step="1000" placeholder="0" value="${g.subs || ''}" inputmode="numeric" />
+          </label>
+          <label class="ch-goal">
+            <span>🎯 Views/mes meta</span>
+            <input class="ch-goal-input" type="number" data-id="${escAttr(c.id)}" data-metric="viewsM"
+                   min="0" step="1000" placeholder="0" value="${g.viewsM || ''}" inputmode="numeric" />
+          </label>
+        </div>
+      </div>
       <button class="remove-btn" data-id="${escAttr(c.id)}">Quitar</button>`;
     box.appendChild(el);
   }
-  $$('.remove-btn').forEach((b) =>
+  $$('.remove-btn', box).forEach((b) =>
     b.addEventListener('click', () => removeChannel(b.dataset.id))
   );
+  $$('.ch-goal-input', box).forEach((inp) =>
+    inp.addEventListener('change', () => setGoal(inp.dataset.id, inp.dataset.metric, inp.value))
+  );
+}
+
+function setGoal(id, metric, raw) {
+  const v = raw === '' ? null : Math.max(0, Math.floor(Number(raw) || 0));
+  goals[id] = goals[id] || { subs: 0, viewsM: 0 };
+  if (v === null) delete goals[id][metric];
+  else goals[id][metric] = v;
+  if (!goals[id].subs && !goals[id].viewsM) delete goals[id];
+  persistGoals();
+  renderGoals();
 }
 
 function removeChannel(id) {
   channels = channels.filter((c) => c.id !== id);
   state.data.delete(id);
+  delete goals[id];
   persistChannels();
+  persistGoals();
   renderChannelList();
   refreshScreens();
   if (apiKey && channels.length) loadStats();
@@ -2044,7 +2188,7 @@ function bindEvents() {
   ['#input-minviews', '#input-minscore'].forEach((sel) =>
     $(sel).addEventListener('change', updateAlertCfg));
 
-  $('#channel-filter').addEventListener('change', () => { renderSummary(); renderWhatsWorking(); });
+  $('#channel-filter').addEventListener('change', () => { renderSummary(); renderWhatsWorking(); renderGoals(); });
 
   $('#btn-save-key').addEventListener('click', saveKey);
   $('#btn-test-key').addEventListener('click', testKey);
