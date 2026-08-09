@@ -271,7 +271,79 @@ function categoryName(id) {
 }
 
 /* ============================================================
-   Historial de evolución (snapshots por día)
+   Ranking de mejores videos (pódium 🥇🥈🥉 + lista)
+   ============================================================ */
+function rankedVideos() {
+  const period = Number($('#rank-period').value);
+  const type = $('#rank-type').value;
+  const cutoff = period > 0 ? Date.now() - period * 86400000 : 0;
+  const list = [];
+  for (const [, bag] of state.data) {
+    for (const v of (bag.videos || [])) {
+      const isShort = String(v.categoryId) === '42';
+      if (type === 'short' && !isShort) continue;
+      if (type === 'long' && isShort) continue;
+      if (cutoff && new Date(v.published).getTime() < cutoff) continue;
+      list.push({
+        v,
+        bag,
+        isShort,
+        score: computeViralScore(v, bag).total,
+      });
+    }
+  }
+  list.sort((a, b) => b.score - a.score);
+  return list;
+}
+
+function renderRanking() {
+  const podium = $('#rank-podium');
+  const rest = $('#rank-videos');
+  const label = $('#lbl-ranking');
+  if (!state.data.size) { podium.innerHTML = ''; rest.innerHTML = ''; return; }
+  const list = rankedVideos();
+  label.textContent = `${list.length} video${list.length === 1 ? '' : 's'} en tu selección`;
+
+  if (!list.length) {
+    podium.innerHTML = '';
+    rest.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><p>No hay videos que coincidan con estos filtros.</p></div>';
+    return;
+  }
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const top = list.slice(0, 3);
+  podium.innerHTML = `<div class="podium-grid">${top.map((it, i) => `
+    <div class="podium-item p${i + 1}">
+      <div class="podium-medal">${medals[i]}</div>
+      <a class="podium-thumb" href="https://www.youtube.com/watch?v=${encodeURIComponent(it.v.id)}" target="_blank" rel="noopener">
+        <img src="${escAttr(it.v.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+        ${it.isShort ? '<span class="video-thumb-duration">#Shorts</span>' : ''}
+      </a>
+      <div class="podium-title">${esc(it.v.title)}</div>
+      <div class="podium-meta">${esc(it.bag.data.name)} · ${fmtCount(it.v.views)} vistas</div>
+      <button class="score-mini lv-${scoreLevel(it.score).cls}" data-score-video="${escAttr(it.v.id)}" title="Ver el Viral Score">
+        <span class="sm-icon">${scoreLevel(it.score).icon}</span><span class="sm-num">${it.score}</span><span class="sm-label">Viral</span>
+      </button>
+    </div>`).join('')}</div>`;
+
+  rest.innerHTML = list.slice(3).map((it, i) => `
+    <div class="rv-item">
+      <div class="rv-pos">${i + 4}</div>
+      <a class="rv-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(it.v.id)}" target="_blank" rel="noopener">
+        <img class="rv-thumb" src="${escAttr(it.v.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+        <div class="rv-body">
+          <div class="rv-title">${esc(it.v.title)}</div>
+          <div class="rv-meta">${esc(it.bag.data.name)} · ${fmtCount(it.v.views)} vistas</div>
+        </div>
+      </a>
+      <button class="score-mini lv-${scoreLevel(it.score).cls}" data-score-video="${escAttr(it.v.id)}" title="Ver el Viral Score">
+        <span class="sm-icon">${scoreLevel(it.score).icon}</span><span class="sm-num">${it.score}</span><span class="sm-label">Viral</span>
+      </button>
+    </div>`).join('');
+}
+
+/* ============================================================
+   Historial / evolución
    ============================================================ */
 function buildPoints() {
   const points = {};
@@ -400,6 +472,7 @@ function renderAll() {
   renderComparison();
   renderRank();
   renderVideos();
+  renderRanking();
   renderHistory();
   $('#lbl-updated').textContent =
     `Actualizado: ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
@@ -1052,6 +1125,7 @@ function switchTab(name) {
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   $$('.view').forEach((v) => v.classList.toggle('hidden', v.id !== `view-${name}`));
   if (name === 'history') renderHistory();
+  if (name === 'ranking') renderRanking();
   if (name === 'settings') setupSettings();
 }
 
@@ -1118,10 +1192,14 @@ function bindEvents() {
   $('#btn-record-history').addEventListener('click', recordManualPoint);
   $('#btn-snapshot-history').addEventListener('click', recordManualPoint);
 
-  $('#videos-list').addEventListener('click', (e) => {
-    const btn = e.target.closest('.score-mini');
-    if (btn) openScoreModal(btn.dataset.scoreVideo);
+  ['#videos-list', '#rank-podium', '#rank-videos'].forEach((sel) => {
+    $(sel).addEventListener('click', (e) => {
+      const btn = e.target.closest('.score-mini');
+      if (btn) openScoreModal(btn.dataset.scoreVideo);
+    });
   });
+  $('#rank-period').addEventListener('change', renderRanking);
+  $('#rank-type').addEventListener('change', renderRanking);
   $('#score-close').addEventListener('click', closeScoreModal);
   $('#score-backdrop').addEventListener('click', closeScoreModal);
   document.addEventListener('keydown', (e) => {

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -110,6 +110,28 @@
           <div id="videos-list"></div>
         </div>
 
+        <div id="view-ranking" class="view hidden">
+          <div class="view-head">
+            <h1>Mis videos ganadores</h1>
+            <span id="lbl-ranking" class="muted"></span>
+          </div>
+          <div class="rank-filters">
+            <select id="rank-period" class="filter-select">
+              <option value="0" selected>Todo</option>
+              <option value="7">Últimos 7 días</option>
+              <option value="30">Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+            </select>
+            <select id="rank-type" class="filter-select">
+              <option value="all" selected>Shorts + videos largos</option>
+              <option value="short">Solo Shorts</option>
+              <option value="long">Solo videos largos</option>
+            </select>
+          </div>
+          <div id="rank-podium" class="podium"></div>
+          <div id="rank-videos"></div>
+        </div>
+
         <div id="view-history" class="view hidden">
           <div class="view-head">
             <h1>Evolución</h1>
@@ -202,6 +224,10 @@
       <span class="tab-icon">🎬</span>
       <span>Videos</span>
     </button>
+    <button class="tab" data-tab="ranking">
+      <span class="tab-icon">🏆</span>
+      <span>Ranking</span>
+    </button>
     <button class="tab" data-tab="history">
       <span class="tab-icon">📈</span>
       <span>Historial</span>
@@ -226,6 +252,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
