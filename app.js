@@ -499,6 +499,7 @@ function renderAll() {
   renderSummary();
   renderWhatsWorking();
   renderComparison();
+  renderChannelRanks();
   renderRank();
   renderVideos();
   renderRanking();
@@ -612,6 +613,92 @@ function renderComparison() {
     },
     options: barOptions(),
   });
+}
+
+/* ============================================================
+   ⚔️ Comparación entre tus canales: tabla con rendimiento a
+   30 días (vistas, growth real del historial, videos y promedio).
+   ============================================================ */
+function channelRanks() {
+  const cutoff = Date.now() - 30 * 86400000;
+  const hist = store.get(KEYS.history, []);
+  const ref = (cid) => {
+    const pts = hist
+      .map((h) => ({ t: new Date(h.date).getTime(), v: h.points?.[cid]?.v }))
+      .filter((p) => Number.isFinite(p.t) && typeof p.v === 'number')
+      .sort((a, b) => a.t - b.t);
+    if (pts.length < 2) return null;
+    const now = Date.now();
+    const older = pts.filter((p) => p.t <= now - 7 * 86400000);
+    const a = older.length ? older[older.length - 1] : pts[0];
+    const b = pts[pts.length - 1];
+    if (b.t - a.t < 7 * 86400000) return null;
+    if (!a.v) return null;
+    return ((b.v - a.v) / a.v) * 100;
+  };
+  const rows = [];
+  for (const [, bag] of state.data) {
+    const d = bag.data;
+    const recent = (bag.videos || []).filter((v) => new Date(v.published).getTime() >= cutoff);
+    const views30 = recent.reduce((a, v) => a + (Number(v.views) || 0), 0);
+    const videos30 = recent.length;
+    rows.push({
+      id: d.id,
+      name: d.name,
+      thumb: d.thumb,
+      views30: Math.round(views30),
+      videos30,
+      avg30: videos30 ? Math.round(views30 / videos30) : 0,
+      short: recent.filter((v) => String(v.categoryId) === '42').length,
+      growth: ref(d.id),
+    });
+  }
+  rows.sort((a, b) => b.views30 - a.views30);
+  return rows;
+}
+
+function growthHTML(g) {
+  if (g === null) return '<span class="cmp-na">—</span>';
+  const sign = g > 0 ? '+' : '';
+  const cls = g > 5 ? 'up' : g < -3 ? 'down' : 'flat';
+  return `<span class="cmp-growth ${cls}">${sign}${g.toFixed(1)}%</span>`;
+}
+
+function renderChannelRanks() {
+  const box = $('#channel-compare');
+  if (!box) return;
+  if (!state.data.size) { box.innerHTML = ''; return; }
+  const rows = channelRanks();
+  const html = rows.map((r) => `
+    <tr>
+      <td>
+        <div class="cc-name">
+          <img class="avatar" src="${escAttr(r.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <span>${esc(r.name)}</span>
+        </div>
+      </td>
+      <td class="cc-num">${fmtCount(r.views30)}</td>
+      <td class="cc-num">${r.videos30}</td>
+      <td class="cc-num">${fmtCount(r.avg30)}</td>
+      <td class="cc-num cc-shorts">${r.short} #Shorts</td>
+      <td class="cc-growth-cell">${growthHTML(r.growth)}</td>
+    </tr>`).join('');
+  box.className = rows.length ? 'cmp-table-wrap' : 'cmp-table-wrap empty';
+  box.innerHTML = `
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>Canal</th>
+          <th class="cc-num">Views 30d</th>
+          <th class="cc-num">Videos</th>
+          <th class="cc-num">Promedio</th>
+          <th class="cc-num">Shorts</th>
+          <th>Growth</th>
+        </tr>
+      </thead>
+      <tbody>${html}</tbody>
+    </table>
+    ${!rows.length ? '<p class="muted small">Publica y vuelve a cargar para ver el rendimiento a 30 días.</p>' : ''}`;
 }
 
 function barOptions() {
