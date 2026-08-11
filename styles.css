@@ -1218,6 +1218,18 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 .msg.error { color: var(--danger); }
 .msg.success { color: var(--success); }
 
+.videos-error { color: var(--danger); font-size: 12px; }
+.videos-error-banner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* ============ Buttons ============ */
 .btn {
   font-family: var(--font);

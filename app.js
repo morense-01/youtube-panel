@@ -328,7 +328,11 @@ function renderRanking() {
 
   if (!list.length) {
     podium.innerHTML = '';
-    rest.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><p>No hay videos que coincidan con estos filtros.</p></div>';
+    const anyError = [...state.data.values()].some((bag) => !(bag.videos || []).length && bag.videosError);
+    const hasVideos = [...state.data.values()].some((bag) => (bag.videos || []).length);
+    rest.innerHTML = anyError && !hasVideos
+      ? '<div class="empty-state"><div class="empty-icon">🏆</div><p>No se pudieron cargar los videos (revisa tu API key, la cuota de YouTube o si tu navegador/antivirus bloquea las llamadas a googleapis.com).</p></div>'
+      : '<div class="empty-state"><div class="empty-icon">🏆</div><p>No hay videos que coincidan con estos filtros.</p></div>';
     return;
   }
 
@@ -487,7 +491,11 @@ async function loadStats() {
     const perChannel = Math.min(maxVideos, 50);
     await Promise.all([...state.data.entries()].map(async ([id, bag]) => {
       try { bag.videos = await YT.videoList(bag.data, perChannel); }
-      catch (e) { console.warn('videoList', id, e); bag.videos = []; }
+      catch (e) {
+        bag.videos = [];
+        bag.videosError = e?.message || String(e);
+        console.warn('videoList', id, e);
+      }
     }));
 
     persistLastData();
@@ -781,11 +789,13 @@ function renderVideos() {
   const box = $('#videos-list');
   if (!state.data.size) { box.innerHTML = ''; return; }
   let total = 0;
+  let loaderErrors = 0;
   box.innerHTML = '';
   for (const [cid, bag] of state.data) {
     const d = bag.data;
     const videos = bag.videos || [];
     total += videos.length;
+    if (!videos.length && bag.videosError) loaderErrors++;
     const block = document.createElement('div');
     block.className = 'channel-block';
     block.innerHTML = `
@@ -793,11 +803,15 @@ function renderVideos() {
         <img class="avatar" src="${d.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer" />
         <h3>${esc(d.name)}</h3>
       </div>
-      ${videos.length ? videos.map((v) => videoCardHTML(v, bag)).join('') : '<p class="muted">Sin datos de videos.</p>'}`;
+      ${videos.length ? videos.map((v) => videoCardHTML(v, bag)).join('') : (bag.videosError ? `<p class="muted">Sin datos de videos. <span class="videos-error">${esc(bag.videosError)}</span></p>` : '<p class="muted">Sin datos de videos.</p>')}`;
     box.appendChild(block);
   }
   const n = state.data.size;
   $('#lbl-videos-info').textContent = `${total} videos · ${n} canal${n > 1 ? 'es' : ''}`;
+  if (total === 0 && loaderErrors === n) {
+    box.insertAdjacentHTML('afterbegin',
+      '<div class="videos-error-banner">⚠️ No se pudieron cargar los videos (revisa tu API key, la cuota de YouTube o si tu navegador/antivirus bloquea las llamadas a googleapis.com). Los datos del panel sí se actualizan; solo falta la lista de videos.</div>');
+  }
 }
 
 function videoCardHTML(v, bag) {
