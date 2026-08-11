@@ -43,6 +43,14 @@ const store = {
   },
 };
 
+/* Historial saneado: descarta entradas corruptas de versiones antiguas
+   (sin date string o sin points) que rompían el ordenado y los gráficos. */
+function getHistory() {
+  const hist = store.get(KEYS.history, []);
+  if (!Array.isArray(hist)) return [];
+  return hist.filter((h) => h && typeof h.date === 'string' && h.points && typeof h.points === 'object');
+}
+
 const fmtFull = new Intl.NumberFormat('es');
 
 function fmtCount(n) {
@@ -387,7 +395,7 @@ function persistLastData() {
 function recordSnapshot() {
   if (!channels.length || !state.data.size) return;
   const today = new Date().toISOString().slice(0, 10);
-  const hist = store.get(KEYS.history, []);
+  const hist = getHistory();
   const points = buildPoints();
   const existing = hist.find((h) => h.date === today);
   if (existing) Object.assign(existing.points, points);
@@ -422,7 +430,7 @@ function recordManualPoint() {
     showToast('Primero agrega canales y carga los datos (pulsa ↻).', 'error');
     return;
   }
-  const hist = store.get(KEYS.history, []);
+  const hist = getHistory();
   hist.push({ date: new Date().toISOString(), points, manual: true });
   hist.sort((a, b) => a.date.localeCompare(b.date));
   backfillHistory(hist);
@@ -489,6 +497,7 @@ async function loadStats() {
     const alerts = detectAlerts();
     showToast(alerts ? `Datos actualizados · ${alerts} alerta${alerts === 1 ? '' : 's'} nueva${alerts === 1 ? '' : 's'}` : 'Datos actualizados', 'success');
   } catch (e) {
+    console.error('loadStats falló', e);
     showToast(e?.message || 'No se pudieron cargar los datos.', 'error');
   } finally {
     state.loading = false;
@@ -499,21 +508,29 @@ async function loadStats() {
 /* ============================================================
    Render de vistas
    ============================================================ */
+/* Ejecuta un render aislado: si un módulo falla con datos corruptos, loguea
+   el error a consola y continúa con el resto en vez de dejar las vistas vacías. */
+function safeRender(label, fn) {
+  try { fn(); } catch (e) {
+    console.error('Error al renderizar', label, e);
+  }
+}
+
 function renderAll() {
-  renderFilterOptions();
-  renderSummary();
-  renderHealth();
-  renderWhatsWorking();
-  renderComparison();
-  renderChannelRanks();
-  renderPersonalAlerts();
-  renderGoals();
-  renderRank();
-  renderVideos();
-  renderRanking();
-  renderMomentum();
-  renderPatterns();
-  renderHistory();
+  safeRender('filtros', renderFilterOptions);
+  safeRender('resumen', renderSummary);
+  safeRender('estado del canal', renderHealth);
+  safeRender('lo que funciona', renderWhatsWorking);
+  safeRender('comparacion', renderComparison);
+  safeRender('rank canales', renderChannelRanks);
+  safeRender('alertas personales', renderPersonalAlerts);
+  safeRender('objetivos', renderGoals);
+  safeRender('rank', renderRank);
+  safeRender('videos', renderVideos);
+  safeRender('ranking', renderRanking);
+  safeRender('acelerando', renderMomentum);
+  safeRender('patrones', renderPatterns);
+  safeRender('historial', renderHistory);
   $('#lbl-updated').textContent =
     `Actualizado: ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
 }
@@ -630,7 +647,7 @@ function renderComparison() {
    ============================================================ */
 function channelRanks() {
   const cutoff = Date.now() - 30 * 86400000;
-  const hist = store.get(KEYS.history, []);
+  const hist = getHistory();
   const ref = (cid) => {
     const pts = hist
       .map((h) => ({ t: new Date(h.date).getTime(), v: h.points?.[cid]?.v }))
@@ -998,7 +1015,7 @@ function updateAlertCfg() {
 function personalAlerts() {
   const out = [];
   const now = Date.now();
-  const hist = store.get(KEYS.history, []);
+  const hist = getHistory();
 
   const add = ({ icon, cls, text, video = null }) => {
     out.push({ icon, cls, text, video });
@@ -1102,7 +1119,7 @@ function renderPersonalAlerts() {
    (largos + Shorts) publicados en los últimos 30 días. */
 function monthlyViews(bag) {
   const now = Date.now();
-  const hist = store.get(KEYS.history, []);
+  const hist = getHistory();
   const step = 30 * 86400000;
   let ref = null;
   for (const h of hist) {
@@ -2095,7 +2112,7 @@ function renderHourRank() {
 
 /* --- Historial / evolución --- */
 function renderHistory() {
-  const hist = store.get(KEYS.history, []);
+  const hist = getHistory();
   const empty = $('#history-empty');
   const msg = $('#empty-msg');
   const sub = $('#empty-sub');
