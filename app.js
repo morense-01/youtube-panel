@@ -11,6 +11,33 @@
    - ytPanel.history     : snapshots por visita {date, points{id:{s,v,vd}}}
    ============================================================ */
 
+/* ---------- Diagnóstico visible ----------
+   Cualquier error de JS no capturado se muestra en pantalla para poder
+   ver la causa exacta desde el navegador del usuario. */
+(function () {
+  const make = () => {
+    let el = document.getElementById('diag-banner');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'diag-banner';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#7f1d1d;color:#fff;padding:10px 14px;font:12px/1.5 monospace;white-space:pre-wrap;display:none;';
+    document.body.appendChild(el);
+    return el;
+  };
+  const show = (msg) => {
+    const el = make();
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+  };
+  window.addEventListener('error', (e) => {
+    show('ERROR JS: ' + (e.message || String(e)) + '\nEn: ' + (e.filename || '').split('/').pop() + ':' + (e.lineno || ''));
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e && e.reason;
+    show('PROMESA: ' + ((r && r.message) || String(r || 'desconocido')));
+  });
+})();
+
 const KEYS = {
   apikey: 'ytPanel.apikey',
   channels: 'ytPanel.channels',
