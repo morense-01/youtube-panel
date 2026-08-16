@@ -2347,12 +2347,19 @@ function setRefresh(on) {
    Eventos
    ============================================================ */
 function bindEvents() {
+  // Vinculaciones críticas primero: si algo de abajo falla, la navegación y
+  // Ajustes siguen funcionando (pantallas de bienvenida usan [data-action]).
+  // Delegación a nivel document: el botón "Configurar mi clave" responde aunque
+  // un addEventListener previo falle o el botón se re-renderice.
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="open-settings"]')) openSettings();
+  });
+  $('#btn-settings').addEventListener('click', openSettings);
   $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
   $('#btn-home').addEventListener('click', () => switchTab('dashboard'));
   $('#btn-refresh').addEventListener('click', loadStats);
-  $$('[data-action]').forEach((b) => b.addEventListener('click', openSettings));
-  $('#btn-settings').addEventListener('click', openSettings);
 
+  try {
   $('#btn-alerts').addEventListener('click', openAlerts);
   $('#btn-ideas').addEventListener('click', renderIdeas);
   $('#ideas-result').addEventListener('click', (e) => {
@@ -2408,6 +2415,7 @@ function bindEvents() {
     Object.values(KEYS).forEach((k) => store.del(k));
     location.reload();
   });
+  } catch (e) { console.error('bindEvents parcial', e); }
 }
 
 function saveKey() {
