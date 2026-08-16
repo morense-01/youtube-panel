@@ -29,12 +29,20 @@
     el.textContent = '⚠ ' + msg;
     el.style.display = 'block';
   };
+  const isExtensionNoise = (msg, stack) => {
+    const noise = /listener indicated an asynchronous response|message channel closed|Protocol|ResizeObserver loop|Script error\.|Script error/i;
+    return noise.test(msg + ' ' + (stack || ''));
+  };
   window.addEventListener('error', (e) => {
-    show('ERROR JS: ' + (e.message || String(e)) + '\nEn: ' + (e.filename || '').split('/').pop() + ':' + (e.lineno || ''));
+    const msg = (e.message || String(e));
+    if (isExtensionNoise(msg, e.error && e.error.stack)) return;
+    show('ERROR JS: ' + msg + '\nEn: ' + (e.filename || '').split('/').pop() + ':' + (e.lineno || ''));
   });
   window.addEventListener('unhandledrejection', (e) => {
     const r = e && e.reason;
-    show('PROMESA: ' + ((r && r.message) || String(r || 'desconocido')));
+    const msg = ((r && r.message) || String(r || 'desconocido'));
+    if (isExtensionNoise(msg, r && r.stack)) return;
+    show('PROMESA: ' + msg);
   });
 })();
 
