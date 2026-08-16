@@ -41,7 +41,7 @@
         <div class="empty-icon">🔑</div>
         <h2>Bienvenido a tu Panel YouTube</h2>
         <p>Para empezar, necesitas tu clave de API de YouTube (gratis). Tu clave solo se guarda en este navegador.</p>
-        <button class="btn btn-primary" data-action="open-settings">Configurar mi clave</button>
+        <button class="btn btn-primary" data-action="open-settings" onclick="openSettings()">Configurar mi clave</button>
         <details class="help">
           <summary>¿Cómo creo mi API key?</summary>
           <ol>
@@ -61,7 +61,7 @@
         <div class="empty-icon">🎬</div>
         <h2>Aún no tienes canales</h2>
         <p>Agrega tus canales de YouTube para comenzar a monitorearlos.</p>
-        <button class="btn btn-primary" data-action="open-settings">Agregar canales</button>
+        <button class="btn btn-primary" data-action="open-settings" onclick="openSettings()">Agregar canales</button>
       </div>
     </section>
 
@@ -363,6 +363,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>
