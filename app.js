@@ -2365,6 +2365,7 @@ function refreshScreens() {
 
 /* Abre la pestaña de Ajustes aunque aún no haya key ni canales */
 function openSettings() {
+  try { showToast('Abriendo Ajustes…', ''); } catch (e) { console.error(e); }
   $('#screen-setup').classList.add('hidden');
   $('#screen-nodata').classList.add('hidden');
   $('#screen-main').classList.remove('hidden');
@@ -2535,6 +2536,8 @@ async function addChannel() {
    Init
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+  const chip = $('#version-chip');
+  if (chip) chip.textContent = 'v31';
   bindEvents();
   setupSettings();
   refreshScreens();

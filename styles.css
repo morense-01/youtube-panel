@@ -130,6 +130,18 @@ button { -webkit-tap-highlight-color: transparent; }
 .icon-btn:active { transform: scale(0.94); }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn.spinning svg { animation: spin 0.9s linear infinite; }
+.version-chip {
+  align-self: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 3px 9px;
+  font-family: var(--font);
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ============ Layout ============ */
