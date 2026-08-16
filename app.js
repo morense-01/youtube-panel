@@ -144,8 +144,18 @@ function escAttr(s) {
 }
 
 /* ---------- Configuración ---------- */
+/* Canales por defecto: se siembran en el primer arranque si el usuario aún
+   no ha guardado canales propios (el panel arranca listo para monitorear). */
+const DEFAULT_CHANNELS = [
+  { id: 'UCv7HfZocS0PuPU_SQb0jayw', name: 'Eternal Faith Refuge', handle: '@EternalFaithRefugeX', thumb: 'https://yt3.googleusercontent.com/sK5lzEIJ2QhoXJqJMpSihw-1ES45Xd3IyET_Zii_UFBESJGAraducNwGC-ydAAyYTQ-8kX4N=s900-c-k-c0x0' },
+];
+
 let apiKey = store.get(KEYS.apikey, '');
-let channels = store.get(KEYS.channels, []);
+let channels = store.get(KEYS.channels, null);
+if (channels === null) {
+  channels = DEFAULT_CHANNELS.slice();
+  store.set(KEYS.channels, channels);
+}
 let maxVideos = store.get(KEYS.maxVideos, 10);
 
 const ALERT_DEFAULTS = { enabled: true, minViews: 1000, minScore: 75 };
