@@ -204,32 +204,22 @@ if (channels === null) {
   store.set(KEYS.channels, channels);
 }
 
-/* Sincroniza channels.json con localStorage: si hay canales en channels.json
-   que no estén en la sesión local, los fusiona automáticamente. */
-async function tryLoadChannelsJson() {
+/* Carga channels.json de GitHub como fuente principal de verdad */
+async function loadChannelsFromDatabase() {
   try {
-    const res = await fetch('channels.json?v=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) return;
-
-    let added = 0;
-    for (const ch of data) {
-      if (!channels.some((c) => c.id === ch.id)) {
-        channels.push(ch);
-        added++;
+    const res = await fetch('channels.json?t=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        channels = data;
+        persistChannels();
+        return true;
       }
     }
-    if (added > 0) {
-      persistChannels();
-      renderChannelList();
-      refreshScreens();
-      showToast(`✅ Sincronizados ${added} canales desde GitHub`, 'success');
-      if (apiKey && channels.length) loadStats();
-    }
   } catch (e) {
-    console.warn('tryLoadChannelsJson:', e);
+    console.warn('No se pudo cargar channels.json, usando almacenamiento local:', e);
   }
+  return false;
 }
 let maxVideos = store.get(KEYS.maxVideos, 10);
 
@@ -2769,21 +2759,23 @@ async function addChannel() {
   } catch (e) { /* localStorage puede no estar disponible */ }
 })();
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   try {
     const chip = document.getElementById('version-chip');
-    if (chip) chip.textContent = 'v35';
+    if (chip) chip.textContent = 'v36';
     bindEvents();
   } catch (err) {
     console.error('init bindEvents:', err);
   }
+  
+  // Cargar canales desde channels.json (base de datos en GitHub)
+  const loadedFromDb = await loadChannelsFromDatabase();
+  if (loadedFromDb) {
+    showToast(`✅ ${channels.length} canales cargados desde channels.json`, 'success');
+  }
+
   try { setupSettings(); } catch (err) { console.error('init setupSettings:', err); }
   try { refreshScreens(); } catch (err) { console.error('init refreshScreens:', err); }
   try { renderAlertBadge(); } catch (err) { console.error('init renderAlertBadge:', err); }
   try { if (apiKey && channels.length) loadStats(); } catch (err) { console.error('init loadStats:', err); }
-  // Intentar cargar channels.json del repositorio (sync con GitHub)
-  tryLoadChannelsJson().then(() => {
-    renderChannelList();
-    refreshScreens();
-  }).catch(() => {});
 });
