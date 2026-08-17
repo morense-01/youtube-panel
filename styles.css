@@ -1406,6 +1406,34 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 .empty-state h2 { color: var(--text); font-size: 21px; letter-spacing: -0.02em; } 
 .empty-state p { max-width: 440px; }
 
+/* Formulario inline de API key en la pantalla de bienvenida */
+.setup-key-form {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.setup-key-input {
+  flex: 1;
+  min-width: 220px;
+  height: 44px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.setup-key-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+.setup-key-input:focus { border-color: var(--accent); }
+
+
 .help {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1535,4 +1563,321 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   .ww-grid { grid-template-columns: repeat(3, 1fr); }
   .pat-grid { grid-template-columns: repeat(3, 1fr); }
   .idea-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
+   YouTube Content Intelligence — Estilos del módulo
+   ============================================================ */
+
+/* Panel base del módulo */
+.intel-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intel-select {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Tarjeta de información del canal seleccionado */
+.intel-channel-info {
+  margin-top: 4px;
+}
+
+.intel-chan-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.intel-chan-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-3);
+}
+
+.intel-chan-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.intel-chan-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.intel-chan-handle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.intel-chan-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.intel-stat-pill {
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.intel-chan-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+/* Resumen de datos disponibles */
+.intel-data-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.intel-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.intel-summary-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  padding: 12px 14px;
+}
+
+.intel-summary-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.intel-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+.intel-api-note {
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: var(--radius-xs);
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.intel-api-note strong {
+  color: var(--accent);
+}
+
+/* Botón de exportación principal */
+.intel-export-btn {
+  width: 100%;
+  max-width: 400px;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Aviso de error / warning */
+.intel-warning {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--radius-xs);
+  color: var(--danger);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+/* Progreso de exportación */
+.intel-progress {
+  margin-top: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+}
+
+.intel-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.intel-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+
+.intel-step.done {
+  color: var(--success);
+}
+
+.intel-step.active {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.intel-step-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+
+.intel-step.done .intel-step-icon {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--success);
+}
+
+.intel-step.active .intel-step-icon {
+  background: rgba(255, 75, 92, 0.15);
+  color: var(--primary);
+  animation: intel-spin 1.2s linear infinite;
+}
+
+@keyframes intel-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.intel-error-msg {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* Resultados de exportación */
+.intel-results {
+  margin-top: 4px;
+}
+
+.intel-results-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--success);
+  margin-bottom: 16px;
+}
+
+.intel-success-icon {
+  font-size: 22px;
+}
+
+.intel-results-files {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intel-file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  transition: border-color 0.2s;
+}
+
+.intel-file-card:hover {
+  border-color: var(--border-strong);
+}
+
+.intel-file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.intel-file-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.intel-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.intel-file-size {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.intel-download-btn {
+  flex-shrink: 0;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 440px) {
+  .intel-summary-grid { grid-template-columns: 1fr 1fr; }
+  .intel-chan-card { flex-direction: column; align-items: center; text-align: center; }
+  .intel-chan-meta { justify-content: center; }
+  .intel-file-card { flex-direction: column; align-items: flex-start; }
+  .intel-file-name { max-width: 100%; }
+}
+
+@media (min-width: 640px) {
+  .intel-summary-grid { grid-template-columns: repeat(4, 1fr); }
+  .intel-results-files { display: grid; grid-template-columns: 1fr 1fr; }
 }

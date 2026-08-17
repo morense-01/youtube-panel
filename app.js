@@ -1597,11 +1597,6 @@ function copyIdea(text, btn) {
    "Lo que está funcionando": compara videos recientes contra
    el promedio del canal y muestra la mejor señal de cada tipo
    ============================================================ */
-
-/* ============================================================
-   "Lo que está funcionando": compara videos recientes contra
-   el promedio del canal y muestra la mejor señal de cada tipo
-   ============================================================ */
 function durSeconds(str) {
   if (!str) return 0;
   const p = str.split(':').map(Number);
@@ -2269,7 +2264,7 @@ function destroyChart(key) {
    Ajustes
    ============================================================ */
 function setupSettings() {
-  $('#input-apikey').value = apiKey;
+  if (!$('#input-apikey').value) $('#input-apikey').value = apiKey;
   $('#input-maxvideos').value = maxVideos;
   $('#lbl-maxvideos').textContent = `${maxVideos} videos`;
   $('#switch-alerts').checked = alertCfg.enabled;
@@ -2349,18 +2344,33 @@ function switchTab(name) {
   if (name === 'history') renderHistory();
   if (name === 'ranking') renderRanking();
   if (name === 'settings') setupSettings();
+  if (name === 'intelligence' && window.IntelligenceModule?.UI) {
+    window.IntelligenceModule.UI.populateChannels();
+    window.IntelligenceModule.UI.updateSelectedChannelView();
+  }
 }
 
 /* ============================================================
    Pantallas
    ============================================================ */
 function refreshScreens() {
-  const noKey = !apiKey;
-  const noChans = !channels.length;
-  $('#screen-setup').classList.toggle('hidden', !noKey);
-  $('#screen-nodata').classList.toggle('hidden', noKey || !noChans);
-  $('#screen-main').classList.toggle('hidden', noKey || noChans);
-  $('#tabbar').classList.toggle('hidden', noKey || noChans);
+  try {
+    const noKey  = !apiKey;
+    const noChans = !channels.length;
+    const s = (id, hidden) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', hidden);
+    };
+    // screen-setup: visible solo cuando NO hay key
+    s('screen-setup', !noKey);
+    // screen-nodata: visible cuando hay key pero NO canales
+    s('screen-nodata', noKey || !noChans);
+    // screen-main + tabbar: visible cuando hay key Y canales
+    s('screen-main', noKey || noChans);
+    s('tabbar',      noKey || noChans);
+  } catch (err) {
+    console.error('refreshScreens:', err);
+  }
 }
 
 /* Abre la pestaña de Ajustes aunque aún no haya key ni canales */
@@ -2392,76 +2402,146 @@ function setRefresh(on) {
 /* ============================================================
    Eventos
    ============================================================ */
+function on(id, event, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, fn);
+}
+
 function bindEvents() {
-  // Vinculaciones críticas primero: si algo de abajo falla, la navegación y
-  // Ajustes siguen funcionando (pantallas de bienvenida usan [data-action]).
-  // Delegación a nivel document: el botón "Configurar mi clave" responde aunque
-  // un addEventListener previo falle o el botón se re-renderice.
+  // Toda la función está envuelta en try-catch para que refreshScreens()
+  // siempre se ejecute aunque algún binding falle.
+  try {
+
+  // Delegación global: captura clics en cualquier elemento con data-action
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-action="open-settings"]')) openSettings();
   });
-  $('#btn-settings').addEventListener('click', openSettings);
-  $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
-  $('#btn-home').addEventListener('click', () => switchTab('dashboard'));
-  $('#btn-refresh').addEventListener('click', loadStats);
 
-  try {
-  $('#btn-alerts').addEventListener('click', openAlerts);
-  $('#btn-ideas').addEventListener('click', renderIdeas);
-  $('#ideas-result').addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-copy');
-    if (btn) copyIdea(btn.dataset.copy, btn);
-  });
-  $('#btn-clear-alerts').addEventListener('click', clearAlerts);
-  $('#alerts-close').addEventListener('click', closeAlerts);
-  $('#alerts-backdrop').addEventListener('click', closeAlerts);
-  $('#alerts-list').addEventListener('click', (e) => {
-    const dismiss = e.target.closest('[data-dismiss]');
-    if (dismiss) { dismissAlert(dismiss.dataset.dismiss); return; }
-    const mini = e.target.closest('.score-mini');
-    if (mini) openScoreModal(mini.dataset.scoreVideo);
-  });
-  $('#switch-alerts').addEventListener('change', updateAlertCfg);
-  ['#input-minviews', '#input-minscore'].forEach((sel) =>
-    $(sel).addEventListener('change', updateAlertCfg));
-
-  $('#channel-filter').addEventListener('change', () => { renderSummary(); renderHealth(); renderWhatsWorking(); renderGoals(); });
-
-  $('#btn-save-key').addEventListener('click', saveKey);
-  $('#btn-test-key').addEventListener('click', testKey);
-  $('#btn-add-channel').addEventListener('click', addChannel);
-  $('#input-channel').addEventListener('keydown', (e) => { if (e.key === 'Enter') addChannel(); });
-
-  $('#input-maxvideos').addEventListener('input', (e) => {
-    maxVideos = Number(e.target.value);
-    store.set(KEYS.maxVideos, maxVideos);
-    $('#lbl-maxvideos').textContent = `${maxVideos} videos`;
-  });
-
-  $('#btn-record-history').addEventListener('click', recordManualPoint);
-  $('#btn-snapshot-history').addEventListener('click', recordManualPoint);
-
-  ['#videos-list', '#rank-podium', '#rank-videos', '#momentum-list'].forEach((sel) => {
-    $(sel).addEventListener('click', (e) => {
-      const btn = e.target.closest('.score-mini');
-      if (btn) openScoreModal(btn.dataset.scoreVideo);
-    });
-  });
-  $('#rank-period').addEventListener('change', renderRanking);
-  $('#rank-type').addEventListener('change', renderRanking);
-  $('#score-close').addEventListener('click', closeScoreModal);
-  $('#score-backdrop').addEventListener('click', closeScoreModal);
+  // Delegación global: Enter en inputs de api key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('#score-modal').classList.contains('hidden')) closeScoreModal();
-    if (e.key === 'Escape' && !$('#alerts-modal').classList.contains('hidden')) closeAlerts();
+    if (e.key !== 'Enter') return;
+    if (e.target.id === 'input-apikey-setup') saveKeyFromSetup();
+    if (e.target.id === 'input-apikey')        saveKey();
+    if (e.target.id === 'input-channel')       addChannel();
   });
 
-  $('#btn-reset').addEventListener('click', () => {
+  // Delegación global: clics por id via data-fn
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-fn]');
+    if (!t) return;
+    switch (t.dataset.fn) {
+      case 'saveKeyFromSetup': saveKeyFromSetup(); break;
+      case 'saveKey':          saveKey();          break;
+      case 'testKey':          testKey();          break;
+      case 'addChannel':       addChannel();       break;
+      case 'openSettings':     openSettings();     break;
+      case 'loadStats':        loadStats();        break;
+      case 'recordHistory':    recordManualPoint(); break;
+      case 'openAlerts':       openAlerts();       break;
+      case 'closeAlerts':      closeAlerts();      break;
+      case 'clearAlerts':      clearAlerts();      break;
+      case 'closeScore':       closeScoreModal();  break;
+      case 'renderIdeas':      renderIdeas();      break;
+      case 'reset':
+        if (!confirm('¿Borrar todos los datos guardados (API key, canales e historial)?')) return;
+        Object.values(KEYS).forEach((k) => store.del(k));
+        location.reload();
+        break;
+    }
+  });
+
+  // Bindings directos (con null-guard via helper on())
+  on('btn-settings',       'click',  openSettings);
+  on('btn-home',           'click',  () => switchTab('dashboard'));
+  on('btn-refresh',        'click',  loadStats);
+  on('btn-alerts',         'click',  openAlerts);
+  on('btn-clear-alerts',   'click',  clearAlerts);
+  on('alerts-close',       'click',  closeAlerts);
+  on('alerts-backdrop',    'click',  closeAlerts);
+  on('score-close',        'click',  closeScoreModal);
+  on('score-backdrop',     'click',  closeScoreModal);
+  on('btn-save-key',       'click',  saveKey);
+  on('btn-save-key-setup', 'click',  saveKeyFromSetup);
+  on('btn-test-key',       'click',  testKey);
+  on('btn-add-channel',    'click',  addChannel);
+  on('btn-record-history', 'click',  recordManualPoint);
+  on('btn-snapshot-history','click', recordManualPoint);
+  on('switch-alerts',      'change', updateAlertCfg);
+  on('input-minviews',     'change', updateAlertCfg);
+  on('input-minscore',     'change', updateAlertCfg);
+  on('rank-period',        'change', renderRanking);
+  on('rank-type',          'change', renderRanking);
+  on('btn-reset',          'click',  () => {
     if (!confirm('¿Borrar todos los datos guardados (API key, canales e historial)?')) return;
     Object.values(KEYS).forEach((k) => store.del(k));
     location.reload();
   });
-  } catch (e) { console.error('bindEvents parcial', e); }
+
+  // Form submit (Enter o clic en submit) → mismos handlers
+  document.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (form.contains(document.getElementById('input-apikey-setup'))) saveKeyFromSetup();
+    else if (form.contains(document.getElementById('input-apikey')))  saveKey();
+    else if (form.contains(document.getElementById('input-channel'))) addChannel();
+  });
+
+  on('channel-filter', 'change', () => {
+    renderSummary(); renderHealth(); renderWhatsWorking(); renderGoals();
+  });
+
+  on('input-maxvideos', 'input', (e) => {
+    maxVideos = Number(e.target.value);
+    store.set(KEYS.maxVideos, maxVideos);
+    const lbl = document.getElementById('lbl-maxvideos');
+    if (lbl) lbl.textContent = `${maxVideos} videos`;
+  });
+
+  $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+  // Ideas: copy button
+  const ideasResult = document.getElementById('ideas-result');
+  if (ideasResult) {
+    ideasResult.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-copy');
+      if (btn) copyIdea(btn.dataset.copy, btn);
+    });
+  }
+
+  // Alerts list: dismiss + score modal
+  const alertsList = document.getElementById('alerts-list');
+  if (alertsList) {
+    alertsList.addEventListener('click', (e) => {
+      const dismiss = e.target.closest('[data-dismiss]');
+      if (dismiss) { dismissAlert(dismiss.dataset.dismiss); return; }
+      const mini = e.target.closest('.score-mini');
+      if (mini) openScoreModal(mini.dataset.scoreVideo);
+    });
+  }
+
+  // Score modal desde listas de videos
+  ['videos-list', 'rank-podium', 'rank-videos', 'momentum-list'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', (e) => {
+      const btn = e.target.closest('.score-mini');
+      if (btn) openScoreModal(btn.dataset.scoreVideo);
+    });
+  });
+
+  // Tecla Escape para cerrar modales
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const score = document.getElementById('score-modal');
+    if (score && !score.classList.contains('hidden')) { closeScoreModal(); return; }
+    const alerts = document.getElementById('alerts-modal');
+    if (alerts && !alerts.classList.contains('hidden')) { closeAlerts(); }
+  });
+
+  on('btn-ideas', 'click', renderIdeas);
+
+  } catch (err) {
+    console.error('bindEvents error:', err);
+  }
 }
 
 function saveKey() {
@@ -2473,6 +2553,26 @@ function saveKey() {
   setupSettings();
   showToast('Clave guardada. Cargando datos…', 'success');
   loadStats();
+}
+
+function saveKeyFromSetup() {
+  const v = $('#input-apikey-setup').value.trim();
+  if (!v) { showToast('Escribe una API key.', 'error'); return; }
+  apiKey = v;
+  store.set(KEYS.apikey, v);
+  // También sincronizamos el input de ajustes
+  $('#input-apikey').value = v;
+  if (channels.length) {
+    // Hay canales → ir directo al dashboard
+    refreshScreens();
+    showToast('Clave guardada. Cargando datos…', 'success');
+    loadStats();
+  } else {
+    // Sin canales → llevar a Settings para agregar
+    refreshScreens();
+    openSettings();
+    showToast('Clave guardada. Ahora agrega tus canales.', 'success');
+  }
 }
 
 /* Prueba de conexión con la API (no guarda la key automáticamente) */
@@ -2535,12 +2635,30 @@ async function addChannel() {
 /* ============================================================
    Init
    ============================================================ */
+
+// Inicialización temprana (sincrónica): si ya hay una API key guardada,
+// oculta screen-setup de inmediato para evitar flash. Corre antes de
+// DOMContentLoaded porque el script está al final del <body>.
+(function earlyInit() {
+  try {
+    const savedKey = localStorage.getItem('ytPanel.apikey');
+    if (savedKey) {
+      const s = document.getElementById('screen-setup');
+      if (s) s.classList.add('hidden');
+    }
+  } catch (e) { /* localStorage puede no estar disponible */ }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
-  const chip = $('#version-chip');
-  if (chip) chip.textContent = 'v31';
-  bindEvents();
-  setupSettings();
-  refreshScreens();
-  renderAlertBadge();
-  if (apiKey && channels.length) loadStats();
+  try {
+    const chip = document.getElementById('version-chip');
+    if (chip) chip.textContent = 'v33';
+    bindEvents();
+  } catch (err) {
+    console.error('init bindEvents:', err);
+  }
+  try { setupSettings(); } catch (err) { console.error('init setupSettings:', err); }
+  try { refreshScreens(); } catch (err) { console.error('init refreshScreens:', err); }
+  try { renderAlertBadge(); } catch (err) { console.error('init renderAlertBadge:', err); }
+  try { if (apiKey && channels.length) loadStats(); } catch (err) { console.error('init loadStats:', err); }
 });

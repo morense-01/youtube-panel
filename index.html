@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=25" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>" />
 </head>
 <body>
@@ -37,12 +37,15 @@
 
   <main id="app" class="app">
     <!-- Estado: sin API key -->
-    <section id="screen-setup" class="screen hidden">
+    <section id="screen-setup" class="screen">
       <div class="empty-state">
         <div class="empty-icon">🔑</div>
         <h2>Bienvenido a tu Panel YouTube</h2>
-        <p>Para empezar, necesitas tu clave de API de YouTube (gratis). Tu clave solo se guarda en este navegador.</p>
-        <button class="btn btn-primary" data-action="open-settings" onclick="openSettings()">Configurar mi clave</button>
+        <p>Para empezar, pega tu clave de API de YouTube Data v3. Se guarda solo en este navegador.</p>
+        <form class="setup-key-form" action="javascript:void(0)" autocomplete="off" onsubmit="saveKeyFromSetup(); return false;">
+          <input type="text" id="input-apikey-setup" placeholder="AIza..." autocomplete="off" spellcheck="false" class="setup-key-input" />
+          <button type="submit" class="btn btn-primary" id="btn-save-key-setup" onclick="saveKeyFromSetup()">Guardar y continuar →</button>
+        </form>
         <details class="help">
           <summary>¿Cómo creo mi API key?</summary>
           <ol>
@@ -126,9 +129,10 @@
           </div>
           <div class="panel momentum-panel">
             <div class="panel-title">
-<h2>🚀 Acelerando ahora</h2>
+              <h2>🚀 Acelerando ahora</h2>
               <p class="muted small">Videos que están creciendo más rápido que tu promedio. Vigila estos ahora.</p>
-              <div id="momentum-empty" class="momentum-empty">
+            </div>
+            <div id="momentum-empty" class="momentum-empty">
               <p>🔍 Necesitas <strong>al menos 2 cargas de datos</strong> (pulsa ↻ y vuelve otro día o más tarde) para que el panel note cuál crece más rápido.</p>
             </div>
             <div id="momentum-list"></div>
@@ -244,15 +248,17 @@
 
           <div class="panel">
             <div class="panel-title"><h2>Clave de API</h2></div>
+          <form action="javascript:void(0)" autocomplete="off">
             <label class="field">
               <span class="label">API key de YouTube Data v3</span>
-              <input type="password" id="input-apikey" placeholder="AIza..." autocomplete="off" />
+              <input type="text" id="input-apikey" placeholder="AIza..." autocomplete="off" spellcheck="false" />
             </label>
             <div class="row-between">
-              <button class="btn btn-primary" id="btn-save-key">Guardar clave</button>
-              <button class="btn btn-ghost" id="btn-test-key">Probar conexión</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-key">Guardar clave</button>
+              <button type="button" class="btn btn-ghost" id="btn-test-key">Probar conexión</button>
             </div>
-            <p class="muted small">Se guarda solo en tu navegador (localStorage). No se sube a GitHub.</p>
+          </form>
+          <p class="muted small">Se guarda solo en tu navegador (localStorage). No se sube a GitHub.</p>
           </div>
 
           <div class="panel">
@@ -307,6 +313,53 @@
           </div>
         </div>
       </div>
+
+        <!-- ==================== INTELLIGENCE VIEW ==================== -->
+        <div id="view-intelligence" class="view hidden">
+          <div class="view-head">
+            <h1>YouTube Content Intelligence</h1>
+            <p class="muted">Exporta todos los datos de tu canal en un formato optimizado para análisis con IA.</p>
+          </div>
+
+          <!-- Selector de canal -->
+          <div class="panel intel-panel">
+            <div class="panel-title">
+              <h2>Seleccionar canal</h2>
+              <p class="muted small">Elige el canal que quieres exportar para análisis.</p>
+            </div>
+            <select id="intel-channel-select" class="filter-select intel-select"></select>
+            <div id="intel-channel-info" class="intel-channel-info hidden"></div>
+          </div>
+
+          <!-- Período y resumen -->
+          <div class="panel intel-panel" id="intel-options-panel">
+            <div class="panel-title">
+              <h2>Período de análisis</h2>
+            </div>
+            <select id="intel-period-select" class="filter-select">
+              <option value="all">Todo el histórico disponible</option>
+              <option value="365">Últimos 365 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="28">Últimos 28 días</option>
+              <option value="7">Últimos 7 días</option>
+            </select>
+            <div id="intel-data-summary" class="intel-data-summary hidden"></div>
+          </div>
+
+          <!-- Exportar -->
+          <div class="panel intel-panel" id="intel-export-panel">
+            <div class="panel-title">
+              <h2>Exportación</h2>
+              <p class="muted small">Genera los archivos listos para subir directamente a ChatGPT, Gemini, Claude o NotebookLM.</p>
+            </div>
+            <button class="btn btn-primary intel-export-btn" id="btn-intel-export">🚀 Exportar para análisis con IA</button>
+            <div id="intel-progress" class="intel-progress hidden"></div>
+            <div id="intel-results" class="intel-results hidden"></div>
+          </div>
+        </div>
+        <!-- ============================================================ -->
+
+      </div>
     </section>
   </main>
 
@@ -330,6 +383,10 @@
     <button class="tab" data-tab="settings">
       <span class="tab-icon">⚙️</span>
       <span>Ajustes</span>
+    </button>
+    <button class="tab" data-tab="intelligence" id="tab-intelligence">
+      <span class="tab-icon">🧠</span>
+      <span>IA</span>
     </button>
   </nav>
 
@@ -364,6 +421,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js?v=31"></script>
+  <script src="intelligence.js?v=1"></script>
 </body>
 </html>
