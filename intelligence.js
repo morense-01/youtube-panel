@@ -1022,8 +1022,8 @@ Lista de 3 a 5 acciones concretas de producción y titulación.
 ### 3. 🔴 WHAT TO AVOID (Qué Reducir o Eliminar)
 Lista de 3 cosas que no están funcionando según los datos.
 
-### 4. 💡 5 NEW VIDEO IDEAS (Basadas Exclusivamente en los Datos Reales)
-Genera exactamente **5 ideas de videos** diseñadas a partir de los patrones encontrados. Para CADA idea utiliza esta plantilla exacta:
+### 4. 💡 10 NEW VIDEO IDEAS (Basadas Exclusivamente en los Datos Reales)
+Genera exactamente **10 ideas de videos** diseñadas a partir de los patrones encontrados. Para CADA idea utiliza esta plantilla exacta:
 
 - **Idea #[N]:** [Título propuesto atractivo optimizado con los patrones ganadores]
 - **Concepto:** [Descripción del contenido en 2 líneas]
@@ -1357,7 +1357,7 @@ Genera exactamente **5 ideas de videos** diseñadas a partir de los patrones enc
               <span class="intel-file-icon">🧠</span>
               <div>
                 <div class="intel-file-name" title="${escAttr(promptName)}">${esc(promptName)}</div>
-                <div class="intel-file-size">Prompt con contexto y 5 ideas · ${promptSize}</div>
+                <div class="intel-file-size">Prompt con contexto y 10 ideas · ${promptSize}</div>
               </div>
             </div>
             <a class="btn btn-ghost intel-download-btn" href="${promptUrl}" download="${escAttr(promptName)}">Descargar Prompt IA</a>
