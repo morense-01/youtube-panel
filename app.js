@@ -204,23 +204,32 @@ if (channels === null) {
   store.set(KEYS.channels, channels);
 }
 
-/* Intenta cargar channels.json del servidor si localStorage no tiene canales personalizados.
-   Util cuando se abre la app en un equipo nuevo y channels.json está en el mismo directorio. */
+/* Sincroniza channels.json con localStorage: si hay canales en channels.json
+   que no estén en la sesión local, los fusiona automáticamente. */
 async function tryLoadChannelsJson() {
   try {
-    const res = await fetch('channels.json', { cache: 'no-store' });
+    const res = await fetch('channels.json?v=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return;
     const data = await res.json();
     if (!Array.isArray(data) || !data.length) return;
-    // Solo aplica si los canales actuales son exactamente los canales por defecto
-    const defaultIds = DEFAULT_CHANNELS.map((c) => c.id).sort().join(',');
-    const currentIds = channels.map((c) => c.id).sort().join(',');
-    if (currentIds === defaultIds || channels.length === 0) {
-      channels = data;
-      store.set(KEYS.channels, channels);
-      showToast('✅ Canales cargados desde channels.json', 'success');
+
+    let added = 0;
+    for (const ch of data) {
+      if (!channels.some((c) => c.id === ch.id)) {
+        channels.push(ch);
+        added++;
+      }
     }
-  } catch { /* sin channels.json — no pasa nada */ }
+    if (added > 0) {
+      persistChannels();
+      renderChannelList();
+      refreshScreens();
+      showToast(`✅ Sincronizados ${added} canales desde GitHub`, 'success');
+      if (apiKey && channels.length) loadStats();
+    }
+  } catch (e) {
+    console.warn('tryLoadChannelsJson:', e);
+  }
 }
 let maxVideos = store.get(KEYS.maxVideos, 10);
 
@@ -2763,7 +2772,7 @@ async function addChannel() {
 document.addEventListener('DOMContentLoaded', () => {
   try {
     const chip = document.getElementById('version-chip');
-    if (chip) chip.textContent = 'v34';
+    if (chip) chip.textContent = 'v35';
     bindEvents();
   } catch (err) {
     console.error('init bindEvents:', err);
