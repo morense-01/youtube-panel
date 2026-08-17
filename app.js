@@ -156,6 +156,25 @@ if (channels === null) {
   channels = DEFAULT_CHANNELS.slice();
   store.set(KEYS.channels, channels);
 }
+
+/* Intenta cargar channels.json del servidor si localStorage no tiene canales personalizados.
+   Util cuando se abre la app en un equipo nuevo y channels.json está en el mismo directorio. */
+async function tryLoadChannelsJson() {
+  try {
+    const res = await fetch('channels.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) return;
+    // Solo aplica si los canales actuales son exactamente los canales por defecto
+    const defaultIds = DEFAULT_CHANNELS.map((c) => c.id).sort().join(',');
+    const currentIds = channels.map((c) => c.id).sort().join(',');
+    if (currentIds === defaultIds || channels.length === 0) {
+      channels = data;
+      store.set(KEYS.channels, channels);
+      showToast('✅ Canales cargados desde channels.json', 'success');
+    }
+  } catch { /* sin channels.json — no pasa nada */ }
+}
 let maxVideos = store.get(KEYS.maxVideos, 10);
 
 const ALERT_DEFAULTS = { enabled: true, minViews: 1000, minScore: 75 };
@@ -168,6 +187,51 @@ let goals = store.get(KEYS.goals, {}) || {};
 
 function persistChannels() { store.set(KEYS.channels, channels); }
 function persistGoals() { store.set(KEYS.goals, goals); }
+
+/* ---- Exportar / Importar channels.json ---- */
+function exportChannels() {
+  const json = JSON.stringify(channels, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'channels.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ Exportados ${channels.length} canal${channels.length !== 1 ? 'es' : ''} a channels.json`, 'success');
+}
+
+function importChannels(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data) || !data.length) throw new Error('Formato inválido');
+      // Validar estructura básica
+      if (!data[0].id || !data[0].name) throw new Error('El JSON no tiene el formato correcto');
+      // Fusionar: agregar los que no existen, no eliminar los actuales
+      let added = 0;
+      for (const ch of data) {
+        if (!channels.some((c) => c.id === ch.id)) {
+          channels.push(ch);
+          added++;
+        }
+      }
+      persistChannels();
+      renderChannelList();
+      refreshScreens();
+      showToast(`✅ Importados ${added} canal${added !== 1 ? 'es' : ''} nuevos desde channels.json`, 'success');
+      if (apiKey && channels.length) loadStats();
+    } catch (err) {
+      showToast('❌ Error al importar: ' + err.message, 'error');
+    }
+    // Resetear input para poder importar el mismo archivo de nuevo
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
 
 /* ---------- Estado de la UI ---------- */
 const state = {
@@ -2652,7 +2716,7 @@ async function addChannel() {
 document.addEventListener('DOMContentLoaded', () => {
   try {
     const chip = document.getElementById('version-chip');
-    if (chip) chip.textContent = 'v33';
+    if (chip) chip.textContent = 'v34';
     bindEvents();
   } catch (err) {
     console.error('init bindEvents:', err);
@@ -2661,4 +2725,9 @@ document.addEventListener('DOMContentLoaded', () => {
   try { refreshScreens(); } catch (err) { console.error('init refreshScreens:', err); }
   try { renderAlertBadge(); } catch (err) { console.error('init renderAlertBadge:', err); }
   try { if (apiKey && channels.length) loadStats(); } catch (err) { console.error('init loadStats:', err); }
+  // Intentar cargar channels.json del repositorio (sync con GitHub)
+  tryLoadChannelsJson().then(() => {
+    renderChannelList();
+    refreshScreens();
+  }).catch(() => {});
 });

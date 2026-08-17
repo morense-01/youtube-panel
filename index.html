@@ -278,6 +278,19 @@
           </div>
 
           <div class="panel">
+            <div class="panel-title"><h2>💾 Copia de seguridad de canales</h2></div>
+            <p class="muted small">Exporta tu lista de canales a <code>channels.json</code> para guardarlo en GitHub y restaurarlo en otro dispositivo.</p>
+            <div class="row-between" style="gap:0.75rem;flex-wrap:wrap;">
+              <button class="btn btn-primary" id="btn-export-channels" onclick="exportChannels()">⬇ Exportar channels.json</button>
+              <label class="btn btn-ghost" style="cursor:pointer;margin:0;">
+                ⬆ Importar channels.json
+                <input type="file" id="input-import-channels" accept=".json" style="display:none;" onchange="importChannels(event)" />
+              </label>
+            </div>
+            <p class="muted small" style="margin-top:0.5rem;">Al abrir la app en otro equipo, cargará automáticamente <code>channels.json</code> si está junto al <code>index.html</code>.</p>
+          </div>
+
+          <div class="panel">
             <div class="panel-title"><h2>Videos por canal</h2></div>
             <label class="field">
               <span class="label">Cantidad máxima de videos a cargar</span>
